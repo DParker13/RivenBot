@@ -1,8 +1,8 @@
 import asyncio
 import discord
+import youtube_dl
 from discord.ext import commands, tasks
 from os import environ
-import youtube_dl
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 

@@ -1,6 +1,7 @@
 import asyncio
 import discord
 from discord.ext import commands, tasks
+from os import environ
 import youtube_dl
 
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -134,4 +135,4 @@ async def leave(ctx):
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
-client.run('ODg3NTE5OTkxNjQ4MzU4NDMy.YUFVZw.tN14Fpdn8qXivfy4cZdGdurOQwM')
+client.run(environ['TOKEN'])

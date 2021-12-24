@@ -25,6 +25,7 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+token = "ODg3NTE5OTkxNjQ4MzU4NDMy.YUFVZw.Wjy4z_anEub5ucWeVlZGwgARw1c"
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -44,12 +45,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(executable=r"./ffmpeg/bin/ffmpeg.exe", source=filename, **ffmpeg_options), data=data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
+                                          executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
+                   data=data)
 
 
 client = commands.Bot(command_prefix='!')
 status = 'UNO'
-queue = []
+songs = asyncio.Queue()
+play_next_song = asyncio.Event()
 
 
 @client.event
@@ -71,7 +75,45 @@ async def ping(ctx):
     await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
 
 
-@client.command(name='play', help='Plays music from URL')
+@client.command(name='skip', help='Skips the current song in the queue')
+async def skip(ctx):
+    guild = ctx.message.guild
+    voice_channel = guild.voice_client
+
+    if voice_channel.is_playing():
+        voice_channel.stop()
+        toggle_next(None)
+    else:
+        await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
+
+
+async def audio_player_task():
+    while True:
+        try:
+            play_next_song.clear()
+            current = await songs.get()
+            current_song = current[1]
+            ctx = current[0]
+            guild = ctx.message.guild
+            voice_channel = guild.voice_client
+            print("Playing:", current[1].title)
+
+            voice_channel.play(current_song, after=toggle_next)
+            if songs.qsize() == 0:
+                await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+            else:
+                await ctx.send('Queue: ' + songs.qsize() + '\n:musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+
+            await play_next_song.wait()
+        except AttributeError as e:
+            print(e)
+
+
+def toggle_next(error):
+    client.loop.call_soon_threadsafe(play_next_song.set)
+
+
+@client.command(name='play', help='Plays music from URL', pass_context=True)
 async def play(ctx, url):
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
@@ -85,16 +127,12 @@ async def play(ctx, url):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
-    async with ctx.typing():
-        player = await YTDLSource.from_url(url, loop=client.loop)
-
-        if not voice_channel.is_playing():
-            voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-        else:
-            voice_channel.stop()
-            voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-
-    await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(player.title))
+    if not voice_channel.is_playing():
+        await ctx.send('**Loading Song...**')
+    else:
+        await ctx.send('**Adding Song to Queue...**')
+    player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
+    await songs.put([ctx, player])
 
 
 @client.command(name='pause', help='Pauses the music')
@@ -104,7 +142,7 @@ async def pause(ctx):
 
     if ctx.guild.voice_client in ctx.bot.voice_clients:
         if voice_channel.is_playing():
-            await voice_channel.pause()
+            voice_channel.pause()
         else:
             await ctx.send(":exclamation: No music is playing :exclamation:")
     else:
@@ -118,7 +156,7 @@ async def resume(ctx):
 
     if ctx.guild.voice_client in ctx.bot.voice_clients:
         if voice_channel.is_paused():
-            await voice_channel.resume()
+            voice_channel.resume()
         else:
             await ctx.send(":exclamation: Current song is not paused :exclamation:")
     else:
@@ -135,4 +173,24 @@ async def leave(ctx):
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
-client.run(environ['TOKEN'])
+@client.command(name='clear', help='Clears the queue and stops the music')
+async def clear(ctx):
+    guild = ctx.message.guild
+    voice_channel = guild.voice_client
+
+    await ctx.send(":exclamation: Clearing Queue! :exclamation:")
+    empty_queue(songs)
+    voice_channel.stop()
+
+
+def empty_queue(q: asyncio.Queue):
+    if not q.empty():
+        for _ in range(q.qsize()):
+            # Depending on your program, you may want to
+            # catch QueueEmpty
+            q.get_nowait()
+            q.task_done()
+
+
+client.loop.create_task(audio_player_task())
+client.run(token)

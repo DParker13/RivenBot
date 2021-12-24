@@ -25,7 +25,7 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-token = "ODg3NTE5OTkxNjQ4MzU4NDMy.YUFVZw.Wjy4z_anEub5ucWeVlZGwgARw1c"
+token = ""
 
 
 class YTDLSource(discord.PCMVolumeTransformer):

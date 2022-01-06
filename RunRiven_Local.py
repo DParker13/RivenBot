@@ -70,6 +70,26 @@ async def on_message(message):  # event that happens per any message.
     await client.process_commands(message)
 
 
+@client.event
+async def on_voice_state_update(member, before, after):
+    if not member.id == client.user.id:
+        return
+
+    elif before.channel is None:
+        voice = after.channel.guild.voice_client
+        time = 0
+        while True:
+            await asyncio.sleep(1)
+            time = time + 1
+            if voice.is_playing():
+                time = 0
+            if time == 600:
+                await voice.disconnect()
+                print("Bot inactive for too long: leaving channel")
+            if not voice.is_connected():
+                break
+
+
 @client.command(name='ping', help='Returns the latency')
 async def ping(ctx):
     await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
@@ -102,7 +122,8 @@ async def audio_player_task():
             if songs.qsize() == 0:
                 await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
             else:
-                await ctx.send('Queue: ' + songs.qsize() + '\n:musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+                await ctx.send('Queue: ' + songs.qsize() + '\n:musical_note: **Now playing:** {} :musical_note:'.format(
+                    current_song.title))
 
             await play_next_song.wait()
         except AttributeError as e:
@@ -128,9 +149,9 @@ async def play(ctx, url):
     voice_channel = guild.voice_client
 
     if not voice_channel.is_playing():
-        await ctx.send('**Loading Song...**')
+        await ctx.send('**Loading Audio...**')
     else:
-        await ctx.send('**Adding Song to Queue...**')
+        await ctx.send('**Adding Audio to Queue...**')
     player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
     await songs.put([ctx, player])
 

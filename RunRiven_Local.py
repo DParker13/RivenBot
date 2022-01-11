@@ -2,7 +2,6 @@ import asyncio
 import discord
 import youtube_dl
 from discord.ext import commands, tasks
-from os import environ
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -45,9 +44,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
-                                          executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
-                   data=data)
+        try:
+            return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
+                                              executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
+                       data=data)
+        except youtube_dl.utils.DownloadError as e:
+            print(e)
+            return None
 
 
 client = commands.Bot(command_prefix='!')
@@ -84,6 +87,7 @@ async def on_voice_state_update(member, before, after):
             if voice.is_playing():
                 time = 0
             if time == 600:
+                empty_queue(songs)
                 await voice.disconnect()
                 print("Bot inactive for too long: leaving channel")
             if not voice.is_connected():
@@ -100,11 +104,15 @@ async def skip(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
-    if voice_channel.is_playing():
-        voice_channel.stop()
-        toggle_next(None)
+    if ctx.guild.voice_client in ctx.bot.voice_clients:
+        if voice_channel.is_playing():
+            await ctx.send("**Skipping current audio!**")
+            voice_channel.stop()
+            toggle_next(None)
+        else:
+            await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
     else:
-        await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
+        await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
 async def audio_player_task():
@@ -134,8 +142,13 @@ def toggle_next(error):
     client.loop.call_soon_threadsafe(play_next_song.set)
 
 
-@client.command(name='play', help='Plays music from URL', pass_context=True)
-async def play(ctx, url):
+@client.command(name='play',
+                help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
+                pass_context=True)
+async def play(ctx, _):
+    search = ctx.message.content[5:].strip()
+    is_url = search.find(r"https://") != -1
+
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
         return
@@ -148,15 +161,23 @@ async def play(ctx, url):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
+    if is_url is False:
+        await ctx.send("**Searching Youtube: **" + search)
+
     if not voice_channel.is_playing():
         await ctx.send('**Loading Audio...**')
     else:
         await ctx.send('**Adding Audio to Queue...**')
-    player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
-    await songs.put([ctx, player])
+
+    player = await YTDLSource.from_url(search, loop=client.loop, stream=True)
+
+    if player is not None:
+        await songs.put([ctx, player])
+    else:
+        ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
 
 
-@client.command(name='pause', help='Pauses the music')
+@client.command(name='pause', help='Pauses the audio')
 async def pause(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
@@ -167,10 +188,10 @@ async def pause(ctx):
         else:
             await ctx.send(":exclamation: No music is playing :exclamation:")
     else:
-        await ctx.send(':exclamation: Not in a voice channel :exclamation:')
+        await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
-@client.command(name='resume', help='Resumes the current song')
+@client.command(name='resume', help='Resumes the current audio')
 async def resume(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
@@ -181,7 +202,7 @@ async def resume(ctx):
         else:
             await ctx.send(":exclamation: Current song is not paused :exclamation:")
     else:
-        await ctx.send(':exclamation: Not in a voice channel :exclamation:')
+        await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
 @client.command(name='leave', help='Stops the music and makes me leave the voice channel')
@@ -199,9 +220,11 @@ async def clear(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
+    if ctx.guild.voice_client in ctx.bot.voice_clients:
+        voice_channel.stop()
+
     await ctx.send(":exclamation: Clearing Queue! :exclamation:")
     empty_queue(songs)
-    voice_channel.stop()
 
 
 def empty_queue(q: asyncio.Queue):

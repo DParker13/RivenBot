@@ -40,17 +40,36 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
+            if len(data['entries']) == 1:
+                # take first item from a playlist
+                data = data['entries'][0]
 
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        try:
-            return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
-                                              executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
-                       data=data)
-        except youtube_dl.utils.DownloadError as e:
-            print(e)
-            return None
+                filename = data['url'] if stream else ytdl.prepare_filename(data)
+                try:
+                    return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
+                                                       executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
+                                data=data)]
+                except youtube_dl.utils.DownloadError as e:
+                    print(e)
+                    return None
+            else:
+                player_list = list()
+                while len(data['entries']) != 0:
+                    current_data = data['entries'].pop(0)
+
+                    filename = current_data['url'] if stream else ytdl.prepare_filename(current_data)
+                    try:
+                        player_list.append(cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
+                                                                      executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
+                                               data=current_data))
+                    except youtube_dl.utils.DownloadError as e:
+                        print(e)
+                        player_list.append(None)
+
+                return player_list
+
+            # add the rest of the items to queue
+            # await songs.put([ctx, player])
 
 
 client = commands.Bot(command_prefix='!')
@@ -80,13 +99,13 @@ async def on_voice_state_update(member, before, after):
 
     elif before.channel is None:
         voice = after.channel.guild.voice_client
-        time = 0
+        timeout = 0
         while True:
             await asyncio.sleep(1)
-            time = time + 1
+            timeout = timeout + 1
             if voice.is_playing():
-                time = 0
-            if time == 600:
+                timeout = 0
+            if timeout == 600:
                 empty_queue(songs)
                 await voice.disconnect()
                 print("Bot inactive for too long: leaving channel")
@@ -108,7 +127,6 @@ async def skip(ctx):
         if voice_channel.is_playing():
             await ctx.send("**Skipping current audio!**")
             voice_channel.stop()
-            toggle_next(None)
         else:
             await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
     else:
@@ -126,14 +144,20 @@ async def audio_player_task():
             voice_channel = guild.voice_client
             print("Playing:", current[1].title)
 
-            voice_channel.play(current_song, after=toggle_next)
-            if songs.qsize() == 0:
-                await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
-            else:
-                await ctx.send('Queue: ' + songs.qsize() + '\n:musical_note: **Now playing:** {} :musical_note:'.format(
-                    current_song.title))
+            try:
+                if not voice_channel.is_playing():
+                    voice_channel.play(current_song, after=toggle_next)
 
-            await play_next_song.wait()
+                    if songs.qsize() == 0:
+                        await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+                    else:
+                        await ctx.send('**Queue: **' + str(songs.qsize()) + '\n:musical_note: **Now playing:** {} '
+                                                                            ':musical_note:'.format(
+                            current_song.title))
+
+                        await play_next_song.wait()
+            except discord.errors.ClientException as e:
+                print(e)
         except AttributeError as e:
             print(e)
 
@@ -164,17 +188,23 @@ async def play(ctx, _):
     if is_url is False:
         await ctx.send("**Searching Youtube: **" + search)
 
-    if not voice_channel.is_playing():
-        await ctx.send('**Loading Audio...**')
-    else:
-        await ctx.send('**Adding Audio to Queue...**')
+    players = await YTDLSource.from_url(search, loop=client.loop, stream=True)
 
-    player = await YTDLSource.from_url(search, loop=client.loop, stream=True)
+    if players is not None:
+        if not voice_channel.is_playing() and len(players) == 1:
+            await ctx.send('**Loading Audio...**')
+        elif not voice_channel.is_playing() and len(players) > 1:
+            await ctx.send('**Playlist Being Added to Queue...**')
+        else:
+            await ctx.send('**Adding Audio to Queue...**')
 
-    if player is not None:
-        await songs.put([ctx, player])
+        if len(players) == 1:
+            await songs.put([ctx, players[0]])
+        else:
+            for current_player in players:
+                await songs.put([ctx, current_player])
     else:
-        ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
+        await ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
 
 
 @client.command(name='pause', help='Pauses the audio')
@@ -214,17 +244,19 @@ async def leave(ctx):
     else:
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
+    empty_queue(songs)
+
 
 @client.command(name='clear', help='Clears the queue and stops the music')
 async def clear(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
-    if ctx.guild.voice_client in ctx.bot.voice_clients:
-        voice_channel.stop()
-
     await ctx.send(":exclamation: Clearing Queue! :exclamation:")
     empty_queue(songs)
+
+    if ctx.guild.voice_client in ctx.bot.voice_clients:
+        voice_channel.stop()
 
 
 def empty_queue(q: asyncio.Queue):

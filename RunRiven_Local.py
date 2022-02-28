@@ -1,6 +1,7 @@
 import asyncio
 import discord
 import youtube_dl
+import pprint
 from discord.ext import commands, tasks
 
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -8,8 +9,12 @@ youtube_dl.utils.bug_reports_message = lambda: ''
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
     'restrictfilenames': True,
-    'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -39,6 +44,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
+        # Checks if the link is a playlist
         if 'entries' in data:
             if len(data['entries']) == 1:
                 # take first item from a playlist
@@ -67,9 +73,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
                         player_list.append(None)
 
                 return player_list
+        elif data is not None:
+            filename = data['url'] if stream else ytdl.prepare_filename(data)
+            try:
+                return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
+                                                   executable=r"D:\danie\Documents\GitHub\RivenBot\ffmpeg\bin\ffmpeg.exe"),
+                            data=data)]
+            except youtube_dl.utils.DownloadError as e:
+                print(e)
+                return None
 
-            # add the rest of the items to queue
-            # await songs.put([ctx, player])
+        print("DATA IS SET TO NONE")
+        return None
 
 
 client = commands.Bot(command_prefix='!')

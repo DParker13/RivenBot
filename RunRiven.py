@@ -40,6 +40,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
+        # Checks if the link is a playlist
         if 'entries' in data:
             if len(data['entries']) == 1:
                 # take first item from a playlist
@@ -67,8 +68,17 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
                 return player_list
 
-            # add the rest of the items to queue
-            # await songs.put([ctx, player])
+        elif data is not None:
+            filename = data['url'] if stream else ytdl.prepare_filename(data)
+            try:
+                return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options),
+                            data=data)]
+            except youtube_dl.utils.DownloadError as e:
+                print(e)
+                return None
+
+        print("DATA IS SET TO NONE")
+        return None
 
 
 client = commands.Bot(command_prefix='!')

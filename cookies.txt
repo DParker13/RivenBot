@@ -1,0 +1,10 @@
+# Netscape HTTP Cookie File
+.youtube.com	TRUE	/	TRUE	0	PREF	tz=America.New_York&f6=40000000&f3=10&f5=30000
+.youtube.com	TRUE	/	TRUE	0	APISID	z8B4G-igNDSkWqcS/AminMZHfxa-6UzEMs
+.youtube.com	TRUE	/	TRUE	0	SAPISID	BCuW2LhlId9_zE3y/AV2Nq2ylg0e8J6XLF
+.youtube.com	TRUE	/	TRUE	0	__Secure-1PAPISID	BCuW2LhlId9_zE3y/AV2Nq2ylg0e8J6XLF
+.youtube.com	TRUE	/	TRUE	0	__Secure-3PAPISID	BCuW2LhlId9_zE3y/AV2Nq2ylg0e8J6XLF
+.youtube.com	TRUE	/	TRUE	0	PREF	ID=d90e8bd7d3cb2f19:TM=1646367194:LM=1646367194:V=1:S=2wBJ1MzVd7aG6OfF
+.youtube.com	TRUE	/	TRUE	0	SID	IgjTpa16Ujjc9xvij6ZiuVKfzCI4XtjSbsV0om97z-9lgrUE16e0YNWkDCsOdnW5GEqymQ.
+.youtube.com	TRUE	/	TRUE	0	CONSISTENCY	AGDxDeN_PpmFpL7qHoobvy2lH9T2wQzWRAo5X3RwENAVLpjAdUsb_WEsPl2H3UE0F3jh3ymbPW0CHCO6C4XQjIpwmf1yBXRe9kcL1hcXcKPn13kDyGPw53DhQxVSQn8EzRLTIoelSmtZrTCaNCxmg5v8
+.youtube.com	TRUE	/	TRUE	0	SIDCC	AJi4QfErF6JwZefInVFws2iQSLFymmz9IkQFecXf_N-HUqdOdT_MXWnE81-mIRxay1jFHgjid6nA

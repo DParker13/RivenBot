@@ -19,7 +19,8 @@ ytdl_format_options = {
     'default_search': 'auto',
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
     'username': 'meepmeep04@gmail.com',
-    'password': environ["YT_PASSWORD"]
+    'password': environ["YT_PASSWORD"],
+    'cookiefile': 'cookies.txt'
 }
 
 ffmpeg_options = {

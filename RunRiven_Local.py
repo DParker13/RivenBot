@@ -1,12 +1,29 @@
 import asyncio
 import discord
 import youtube_dl
-import pprint
+import argparse
 from discord.ext import commands, tasks
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
-YT_PASSWORD = ''
+parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
+parser.add_argument("--password", help="Youtube account password")
+parser.add_argument("--token", help="Discord token")
+args = parser.parse_args()
+
+YT_PASSWORD = 'meepmoop04'
+TOKEN = ''
+
+intents = discord.Intents.default()
+intents.members = True
+intents.reactions = True
+intents.messages = True
+
+client = commands.Bot(command_prefix='!', intents=intents)
+status = 'UNO'
+songs = asyncio.Queue()
+play_next_song = asyncio.Event()
+raid_name = None
 
 ytdl_format_options = {
     'username': 'meepmeep04@gmail.com',
@@ -34,7 +51,6 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-token = ""
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -92,16 +108,15 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return None
 
 
-client = commands.Bot(command_prefix='!')
-status = 'UNO'
-songs = asyncio.Queue()
-play_next_song = asyncio.Event()
-
-
+# ------------------------------
+# |          Events            |
+# ------------------------------
 @client.event
 async def on_ready():
     await client.change_presence(activity=discord.Game(status))
     print('Bot is online!')
+    print("Name: {}".format(client.user.name))
+    print("ID: {}".format(client.user.id))
 
 
 @client.event
@@ -133,6 +148,35 @@ async def on_voice_state_update(member, before, after):
                 break
 
 
+@client.event
+async def on_reaction_add(reaction, user):
+    # Ignores all bot reactions
+    if client.user.id != user.id:
+        message = reaction.message
+
+        # Checks if the message attached to the reaction was created by this bot
+        if message.author.id == client.user.id:
+            if "**What raid would you like to setup?**" in message.content:
+                await create_raid(reaction)
+            if "Raid:" in message.content:
+                await add_to_raid(reaction)
+
+
+@client.event
+async def on_reaction_remove(reaction, user):
+    print("on_reaction_remove")
+    if client.user.id != user.id:
+        message = reaction.message
+
+        # Checks if the message attached to the reaction was created by this bot
+        if message.author.id == client.user.id:
+            if "Raid:" in message.content:
+                await remove_from_raid(reaction, user)
+
+
+# ------------------------------
+# |          Commands          |
+# ------------------------------
 @client.command(name='ping', help='Returns the latency')
 async def ping(ctx):
     await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
@@ -227,7 +271,8 @@ async def play(ctx, _):
         await ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
 
 
-@client.command(name='pause', help='Pauses the audio')
+@client.command(name='pause',
+                help='Pauses the audio')
 async def pause(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
@@ -241,7 +286,8 @@ async def pause(ctx):
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
-@client.command(name='resume', help='Resumes the current audio')
+@client.command(name='resume',
+                help='Resumes the current audio')
 async def resume(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
@@ -255,7 +301,8 @@ async def resume(ctx):
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
 
 
-@client.command(name='leave', help='Stops the music and makes me leave the voice channel')
+@client.command(name='leave',
+                help='Stops the music and makes me leave the voice channel')
 async def leave(ctx):
     voice_client = ctx.message.guild.voice_client
 
@@ -267,7 +314,8 @@ async def leave(ctx):
     empty_queue(songs)
 
 
-@client.command(name='clear', help='Clears the queue and stops the music')
+@client.command(name='clear',
+                help='Clears the queue and stops the music')
 async def clear(ctx):
     guild = ctx.message.guild
     voice_channel = guild.voice_client
@@ -288,5 +336,132 @@ def empty_queue(q: asyncio.Queue):
             q.task_done()
 
 
+@client.command(name='setraid',
+                help='Sets a specific destiny raid on a defined date')
+async def setraid(ctx):
+    timeout = 20
+    raid_setup_msg = "**What raid would you like to setup?**\n" \
+                     "1️⃣ : Last Wish\n" \
+                     "2️⃣ : Deep Stone Crypt\n" \
+                     "3️⃣ : Vault of Glass\n" \
+                     "4️⃣ : Garden of Salvation\n" \
+                     "5️⃣ : Vow of the Disciple\n\n"
+
+    message = await ctx.send(raid_setup_msg + "*Self Destructing Message: {} seconds*".format(timeout))
+
+    try:
+        await message.add_reaction("1️⃣")
+        await message.add_reaction("2️⃣")
+        await message.add_reaction("3️⃣")
+        await message.add_reaction("4️⃣")
+        await message.add_reaction("5️⃣")
+
+        while timeout != 0:
+            await asyncio.sleep(1)
+            timeout = timeout - 1
+            await message.edit(content=raid_setup_msg + "*Self Destructing Message: {} seconds*".format(timeout))
+        await message.edit(content="Bye Bye :)")
+        await message.delete()
+    except discord.errors.NotFound as e:
+        print("Tried to edit/delete message that does not exist")
+
+
+async def add_to_raid(current_reaction):
+    global raid_name
+
+    message = current_reaction.message
+    raid_team = dict()
+    substitute = ""
+    not_available = ""
+
+    # Rebuilds message based on current reactions and who was first
+    for reaction in message.reactions:
+        async for user in reaction.users():
+            # Ignore bot username reactions
+            if user.name != client.user.name:
+                # New player reaction
+                if user.name not in message.content:
+                    if reaction.emoji == "🪑":
+                        substitute += "*• " + user.name + "*\n"
+                    elif reaction.emoji == "❌":
+                        not_available += "*• " + user.name + "*\n"
+                    else:
+                        raid_team += reaction.emoji + " *" + user.name + "*\n"
+                # Player changed reaction/removed
+                else:
+                    if reaction.emoji == "🪑":
+                        substitute += "*• " + user.name + "*\n"
+                    elif reaction.emoji == "❌":
+                        not_available += "*• " + user.name + "*\n"
+                    else:
+                        raid_team += reaction.emoji + " *" + user.name + "*\n"
+
+    if raid_team == {}:
+        raid_team = "None"
+    if substitute == []:
+        substitute = "None"
+    if not_available == []:
+        not_available = "None"
+
+    await reaction.message.edit(content=("{}\n"
+                                         "*Team:*\n"
+                                         "{}\n"
+                                         "----------\n"
+                                         "*Substitute:*\n"
+                                         "{}\n"
+                                         "----------\n"
+                                         "*Not Available:*\n"
+                                         "{}").format(raid_name, tuple(raid_team), tuple(substitute), tuple(not_available)))
+
+
+async def remove_from_raid(reaction, user):
+    message = reaction.message
+    print(message.content.split("*"))
+
+    # await message.edit(content=message.content)
+
+
+async def create_raid(reaction):
+    global raid_name
+
+    channel = reaction.message.channel
+    raid_name = None
+
+    # Gets the name of the raid
+    if reaction.emoji == "1️⃣":
+        raid_name = "**Raid: Last Wish**\n"
+    elif reaction.emoji == "2️⃣":
+        raid_name = "**Raid: Deep Stone Crypt**\n"
+    elif reaction.emoji == "3️⃣":
+        raid_name = "**Raid: Vault of Glass**\n"
+    elif reaction.emoji == "4️⃣":
+        raid_name = "**Raid: Garden of Salvation**\n"
+    elif reaction.emoji == "5️⃣":
+        raid_name = "**Raid: Vow of Disciple**\n"
+    else:
+        await channel.send("Error: no raid selected")
+        return None
+
+    # Deletes setup message
+    await reaction.message.delete()
+
+    # Sends out the new raid info message
+    message = await channel.send(content=("{}\n"
+                                          "*Team:*\n"
+                                          "None\n"
+                                          "----------\n"
+                                          "*Substitute:*\n"
+                                          "None\n"
+                                          "----------\n"
+                                          "*Not Available:*\n"
+                                          "None").format(raid_name))
+
+    await message.add_reaction("1️⃣")
+    await message.add_reaction("2️⃣")
+    await message.add_reaction("3️⃣")
+    await message.add_reaction("🪑")
+    await message.add_reaction("❌")
+
+
 client.loop.create_task(audio_player_task())
-client.run(token)
+client.run(TOKEN)

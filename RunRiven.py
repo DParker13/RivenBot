@@ -1,14 +1,23 @@
 import asyncio
 import discord
 import youtube_dl
+import argparse
 from discord.ext import commands, tasks
 from os import environ
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
+parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
+parser.add_argument("--password", help="Youtube account password")
+parser.add_argument("--token", help="Discord token")
+args = parser.parse_args()
+
+YT_PASSWORD = args.password
+TOKEN = args.token
+
 ytdl_format_options = {
     'username': 'meepmeep04@gmail.com',
-    'password': environ["YT_PASSWORD"],
+    'password': YT_PASSWORD,
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
@@ -28,7 +37,6 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-token = ""
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -281,4 +289,4 @@ def empty_queue(q: asyncio.Queue):
 
 
 client.loop.create_task(audio_player_task())
-client.run(environ['TOKEN'])
+client.run(TOKEN)

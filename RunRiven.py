@@ -2,8 +2,8 @@ import asyncio
 import discord
 import youtube_dl
 import argparse
+import subprocess
 from discord.ext import commands, tasks
-from os import environ
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -184,6 +184,20 @@ async def audio_player_task():
 
 def toggle_next(error):
     client.loop.call_soon_threadsafe(play_next_song.set)
+
+
+@client.command(name='startminecraft',
+                help='Starts the minecraft server',
+                pass_context=True)
+async def startminecraft(ctx, _):
+    subprocess.call(['sh', 'screen -dmS minecraft bash -c "~/Scripts/minecraft.sh"'])
+
+
+@client.command(name='stopminecraft',
+                help='Stops the minecraft server (Assuming it is running)',
+                pass_context=True)
+async def stopminecraft(ctx, _):
+    subprocess.call('screen -X -S "minecraft" quit')
 
 
 @client.command(name='play',

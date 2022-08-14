@@ -187,10 +187,6 @@ async def audio_player_task():
 def toggle_next(error):
     client.loop.call_soon_threadsafe(play_next_song.set)
 
-@client.command(name="test")
-async def test(ctx):
-    await ctx.send("Testing minecraft timeout")
-    await check_for_players(ctx)
 
 @client.command(name='startminecraft',
                 help='Starts the minecraft server')
@@ -203,8 +199,8 @@ async def startminecraft(ctx):
         subprocess.call(['sh', '/home/dan/Scripts/minecraft.sh'])
 
         # checks for any players within the server to auto shutdown
-        asyncio.sleep(600)
-        await check_for_players()
+        await asyncio.sleep(1800)
+        await check_for_players.start(ctx)
     else:
         await ctx.send("Minecraft server is already running")
 
@@ -222,33 +218,40 @@ async def stopminecraft(ctx):
         await ctx.send("Minecraft server is not running")
 
 
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=30)
 async def check_for_players(ctx):
     status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     status_str = status_proc.stdout.decode('ascii')
     player_count = None
 
-    if 'minecraft' not in status_str:
+    if 'minecraft' in status_str:
         subprocess.call(r"screen -S minecraft -X stuff '/say Checking for active players... \015 list \015'", shell=True)
-        subprocess.call('screen -S minecraft -X hardcopy ./player-check.log', shell=True)
-        asyncio.sleep(5)
+        subprocess.call('screen -S minecraft -X hardcopy ~/Scripts/Script_Files/player-check.log', shell=True)
+        await asyncio.sleep(5)
 
         try:
-            with FileReadBackwards('./player-check.log', encoding='utf-8') as frb:
+            with FileReadBackwards('/home/dan/Scripts/Script_Files/player-check.log', encoding='utf-8') as frb:
                 for line in frb:
                     if '/20' in line:
                         i = line.index('/20')
                         player_count = int(line[i-2:i].strip())
+                        print(str(player_count))
+                        break
 
             if player_count is None or player_count == 0:
+                print("Found no players online - shutting Minecraft server down")
                 subprocess.call(r'screen -S minecraft -X stuff "/say Stopping server in 5 seconds due to lack of players \015"', shell=True)
-                asyncio.sleep(5)
+                await asyncio.sleep(5)
                 subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
                 await ctx.send("Stopping Minecraft server due to lack of players")
-        except FileNotFoundError:
-            await ctx.send("File not found - player-check.log")
+            else:
+                print("Players are online: " + str(player_count))
+        except FileNotFoundError as ex:
+            print(ex)
+            await ctx.send(str(ex))
             check_for_players.stop()
     else:
+        print("Stopping player check")
         check_for_players.stop()
 
 

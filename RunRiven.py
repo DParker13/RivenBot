@@ -3,10 +3,12 @@ import discord
 import youtube_dl
 import argparse
 import subprocess
+from file_read_backwards import FileReadBackwards
 from discord.ext import commands, tasks
 
 youtube_dl.utils.bug_reports_message = lambda: ''
 
+# Command line arguments
 parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
 parser.add_argument("--password", help="Youtube account password")
 parser.add_argument("--token", help="Discord token")
@@ -14,6 +16,12 @@ args = parser.parse_args()
 
 YT_PASSWORD = args.password
 TOKEN = args.token
+
+# Initialization
+client = commands.Bot(command_prefix='!')
+status = 'UNO'
+songs = asyncio.Queue()
+play_next_song = asyncio.Event()
 
 ytdl_format_options = {
     'username': 'meepmeep04@gmail.com',
@@ -90,12 +98,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
         print("DATA IS SET TO NONE")
         return None
-
-
-client = commands.Bot(command_prefix='!')
-status = 'UNO'
-songs = asyncio.Queue()
-play_next_song = asyncio.Event()
 
 
 @client.event
@@ -185,19 +187,71 @@ async def audio_player_task():
 def toggle_next(error):
     client.loop.call_soon_threadsafe(play_next_song.set)
 
+@client.command(name="test")
+async def test(ctx):
+    await ctx.send("Testing minecraft timeout")
+    await check_for_players(ctx)
 
 @client.command(name='startminecraft',
-                help='Starts the minecraft server',
-                pass_context=True)
-async def startminecraft(ctx, _):
-    subprocess.call(['sh', 'screen -dmS minecraft bash -c "~/Scripts/minecraft.sh"'])
+                help='Starts the minecraft server')
+async def startminecraft(ctx):
+    statusProc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    statusStr = statusProc.stdout.decode('ascii')
+
+    if 'minecraft' not in statusStr:
+        await ctx.send("Starting Minecraft Server")
+        subprocess.call(['sh', '/home/dan/Scripts/minecraft.sh'])
+
+        # checks for any players within the server to auto shutdown
+        asyncio.sleep(600)
+        await check_for_players()
+    else:
+        await ctx.send("Minecraft server is already running")
 
 
 @client.command(name='stopminecraft',
-                help='Stops the minecraft server (Assuming it is running)',
-                pass_context=True)
-async def stopminecraft(ctx, _):
-    subprocess.call('screen -X -S "minecraft" quit')
+                help='Stops the minecraft server (Assuming it is running)')
+async def stopminecraft(ctx):
+    status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    status_str = status_proc.stdout.decode('ascii')
+
+    if 'minecraft' in status_str:
+        await ctx.send("Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
+        subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
+    else:
+        await ctx.send("Minecraft server is not running")
+
+
+@tasks.loop(minutes=1)
+async def check_for_players(ctx):
+    status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    status_str = status_proc.stdout.decode('ascii')
+    player_count = None
+
+    if 'minecraft' not in status_str:
+        subprocess.call(r"screen -S minecraft -X stuff '/say Checking for active players... \015 list \015'", shell=True)
+        subprocess.call('screen -S minecraft -X hardcopy ./player-check.log', shell=True)
+        asyncio.sleep(5)
+
+        try:
+            with FileReadBackwards('./player-check.log', encoding='utf-8') as frb:
+                for line in frb:
+                    if '/20' in line:
+                        i = line.index('/20')
+                        player_count = int(line[i-2:i].strip())
+
+            if player_count is None or player_count == 0:
+                subprocess.call(r'screen -S minecraft -X stuff "/say Stopping server in 5 seconds due to lack of players \015"', shell=True)
+                asyncio.sleep(5)
+                subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
+                await ctx.send("Stopping Minecraft server due to lack of players")
+        except FileNotFoundError:
+            await ctx.send("File not found - player-check.log")
+            check_for_players.stop()
+    else:
+        check_for_players.stop()
+
+
 
 
 @client.command(name='play',

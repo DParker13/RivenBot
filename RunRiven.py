@@ -223,37 +223,31 @@ async def stopminecraft(ctx):
 async def check_for_players(ctx):
     status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     status_str = status_proc.stdout.decode('ascii')
-    player_count = None
-    total_player_count_found = False
-    retry_count = 0
+    player_count = 0
 
     if 'minecraft' in status_str:
         try:
-            while total_player_count_found is False:
-                subprocess.call(r"screen -S minecraft -X stuff '/say Checking for active players... \015 list \015'", shell=True)
-                subprocess.call('screen -S minecraft -X hardcopy ~/Scripts/Script_Files/player-check.log', shell=True)
-                await asyncio.sleep(5)
+            subprocess.call(r"screen -S minecraft -X stuff '/say Checking for active players... \015 list \015'", shell=True)
+            await asyncio.sleep(2)
+            subprocess.call('screen -S minecraft -X hardcopy ~/Scripts/Script_Files/player-check.log', shell=True)
 
-                with FileReadBackwards('/home/dan/Scripts/Script_Files/player-check.log', encoding='utf-8') as frb:
-                    for line in frb:
-                        if '/20' in line:
-                            total_player_count_found = True
-                            i = line.index('/20')
-                            player_count = int(line[i-2:i].strip())
-                            print(str(player_count))
-                            break
-                    retry_count += 1
+            with FileReadBackwards('/home/dan/Scripts/Script_Files/player-check.log', encoding='utf-8') as frb:
+                for line in frb:
+                    if '/20' in line:
+                        i = line.index('/20')
+                        player_count = int(line[i-2:i].strip())
+                        print(str(player_count))
+                        break
+                print("Did not find player count!")
 
-                if player_count is None or player_count == 0 and total_player_count_found:
-                    print("Found no players online - shutting Minecraft server down")
-                    subprocess.call(r'screen -S minecraft -X stuff "/say Stopping server in 5 seconds due to lack of players \015"', shell=True)
-                    await asyncio.sleep(5)
-                    subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
-                    await ctx.send("Stopping Minecraft server due to lack of players")
-                elif total_player_count_found is False:
-                    print("Retrying player search - " + str(retry_count))
-                else:
-                    print("Players are online: " + str(player_count))
+            if player_count == 0:
+                print("Found no players online - shutting Minecraft server down")
+                subprocess.call(r'screen -S minecraft -X stuff "/say Stopping server in 30 seconds due to lack of players \015"', shell=True)
+                await asyncio.sleep(30)
+                subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
+                await ctx.send("Stopping Minecraft server due to lack of players")
+            else:
+                print("Players are online: " + str(player_count))
         except FileNotFoundError as ex:
             print(ex)
             await ctx.send(str(ex))

@@ -213,7 +213,7 @@ async def stopminecraft(ctx):
 
     if 'minecraft' in status_str:
         await ctx.send("Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
-        await check_for_players.stop()
+        check_for_players.stop()
         subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
     else:
         await ctx.send("Minecraft server is not running")
@@ -251,10 +251,10 @@ async def check_for_players(ctx):
         except FileNotFoundError as ex:
             print(ex)
             await ctx.send(str(ex))
-            await check_for_players.stop()
+            check_for_players.stop()
     else:
         print("Stopping player check")
-        await check_for_players.stop()
+        check_for_players.stop()
 
 
 @client.command(name='play',

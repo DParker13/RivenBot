@@ -1,12 +1,12 @@
 import asyncio
 import discord
-import youtube_dl
+import yt_dlp
 import argparse
 import subprocess
 from file_read_backwards import FileReadBackwards
 from discord.ext import commands, tasks
 
-youtube_dl.utils.bug_reports_message = lambda: ''
+yt_dlp.utils.bug_reports_message = lambda: ''
 
 # Command line arguments
 parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
@@ -17,8 +17,10 @@ args = parser.parse_args()
 YT_PASSWORD = args.password
 TOKEN = args.token
 
+intents = discord.Intents.default()
+
 # Initialization
-client = commands.Bot(command_prefix='!')
+client = commands.Bot(command_prefix='!', intents=intents)
 status = 'UNO'
 songs = asyncio.Queue()
 play_next_song = asyncio.Event()
@@ -44,7 +46,7 @@ ffmpeg_options = {
     'options': '-vn'
 }
 
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -69,7 +71,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                 try:
                     return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options),
                                 data=data)]
-                except youtube_dl.utils.DownloadError as e:
+                except yt_dlp.utils.DownloadError as e:
                     print(e)
                     return None
             else:
@@ -81,7 +83,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
                     try:
                         player_list.append(cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options),
                                                data=current_data))
-                    except youtube_dl.utils.DownloadError as e:
+                    except yt_dlp.utils.DownloadError as e:
                         print(e)
                         player_list.append(None)
 
@@ -92,7 +94,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
             try:
                 return [cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options),
                             data=data)]
-            except youtube_dl.utils.DownloadError as e:
+            except yt_dlp.utils.DownloadError as e:
                 print(e)
                 return None
 
@@ -196,11 +198,11 @@ async def startminecraft(ctx):
 
     if 'minecraft' not in statusStr:
         await ctx.send("Starting Minecraft Server")
-        subprocess.call(['sh', '/home/dan/Scripts/minecraft.sh'])
+        subprocess.call(['sh', '/home/media-server/Scripts/minecraft.sh'])
 
         # checks for any players within the server to auto shutdown
-        await asyncio.sleep(1800)
-        await check_for_players.start(ctx)
+        # await asyncio.sleep(1800)
+        # await check_for_players.start(ctx)
     else:
         await ctx.send("Minecraft server is already running")
 
@@ -231,7 +233,7 @@ async def check_for_players(ctx):
             await asyncio.sleep(2)
             subprocess.call('screen -S minecraft -X hardcopy ~/Scripts/Script_Files/player-check.log', shell=True)
 
-            with FileReadBackwards('/home/dan/Scripts/Script_Files/player-check.log', encoding='utf-8') as frb:
+            with FileReadBackwards('/home/media-server/Scripts/Script_Files/player-check.log', encoding='utf-8') as frb:
                 for line in frb:
                     if '/20' in line:
                         i = line.index('/20')

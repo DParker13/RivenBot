@@ -15,6 +15,7 @@ yt_dlp.utils.bug_reports_message = lambda: ''
 parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
 parser.add_argument("--password", help="Youtube account password")
 parser.add_argument("--token", help="Discord token")
+parser.add_argument("--logs", help="Base path for log files")
 args = parser.parse_args()
 
 YT_PASSWORD = args.password
@@ -112,7 +113,7 @@ def setup_logs():
     log_exists = True
     iteration = 0
     while(log_exists):
-        log_file = './Logs/' + 'log_' + now.strftime('%Y%m%d_') + str(iteration) + '.log'
+        log_file = str(args.logs) + 'log_' + now.strftime('%Y%m%d_') + str(iteration) + '.log'
         if not os.path.isfile(log_file):
             log_exists = False
             break

@@ -3,6 +3,9 @@ import discord
 import yt_dlp
 import argparse
 import subprocess
+import builtins
+import datetime
+import os.path 
 from file_read_backwards import FileReadBackwards
 from discord.ext import commands, tasks
 
@@ -24,6 +27,8 @@ client = commands.Bot(command_prefix='!', intents=intents)
 status = 'UNO'
 songs = asyncio.Queue()
 play_next_song = asyncio.Event()
+log_file = None
+_print = print
 
 ytdl_format_options = {
     'username': 'meepmeep04@gmail.com',
@@ -101,10 +106,31 @@ class YTDLSource(discord.PCMVolumeTransformer):
         print("DATA IS SET TO NONE")
         return None
 
+def setup_logs():
+    global log_file
+    now = datetime.datetime.now()
+    log_exists = True
+    iteration = 0
+    while(log_exists):
+        log_file = './Logs/' + 'log_' + now.strftime('%Y%m%d_') + str(iteration) + '.log'
+        if not os.path.isfile(log_file):
+            log_exists = False
+            break
+        iteration += 1
+
+#Overrides original print function
+def print(*args, **kwargs):
+    #prints to console
+    _print(*args, **kwargs)
+    #logs to file
+    timestamp = datetime.datetime.now().ctime()
+    with open(log_file, "a+") as log:
+        _print(timestamp + ' --', *args, file=log, **kwargs)
 
 @client.event
 async def on_ready():
     await client.change_presence(activity=discord.Game(status))
+    setup_logs()
     print('Bot is online!')
 
 
@@ -119,6 +145,7 @@ async def on_message(message):  # event that happens per any message.
 @client.event
 async def on_voice_state_update(member, before, after):
     if not member.id == client.user.id:
+        print("Something went wrong in 'on_voice_state_update'")
         return
 
     elif before.channel is None:
@@ -139,22 +166,31 @@ async def on_voice_state_update(member, before, after):
 
 @client.command(name='ping', help='Returns the latency')
 async def ping(ctx):
+    print('Start - Ping Command Called')
     await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
-
+    print('End - Ping Command Called')
 
 @client.command(name='skip', help='Skips the current song in the queue')
 async def skip(ctx):
+    print('Start - Skip Command Called')
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
     if ctx.guild.voice_client in ctx.bot.voice_clients:
         if voice_channel.is_playing():
+            print("    Skipping current audio!")
             await ctx.send("**Skipping current audio!**")
+            print("    Skipping current audio!")
             voice_channel.stop()
         else:
+            print("    There is nothing in the queue to skip")
             await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
+            print("    There is nothing in the queue to skip")
     else:
+        print(r"I'm not in a voice channel right now")
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
+        print(r"I'm not in a voice channel right now")
+    print('End - Skip Command Called')
 
 
 async def audio_player_task():
@@ -166,50 +202,61 @@ async def audio_player_task():
             ctx = current[0]
             guild = ctx.message.guild
             voice_channel = guild.voice_client
-            print("Playing:", current[1].title)
+            print("Playing - ", current[1].title)
 
             try:
                 if not voice_channel.is_playing():
+                    print('Start - Start Song in Queue')
                     voice_channel.play(current_song, after=toggle_next)
 
                     if songs.qsize() == 0:
+                        print('    Starting Last Song - ' + str(current_song.title) + 'Queue Size: ' + str(songs.qsize()))
                         await ctx.send(':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+                        print('    Awaiting Last Song...')
                     else:
+                        print('    Starting Next Song - ' + str(current_song.title) + 'Queue Size: ' + str(songs.qsize()))
                         await ctx.send('**Queue: **' + str(songs.qsize()) + '\n:musical_note: **Now playing:** {} '
-                                                                            ':musical_note:'.format(
-                            current_song.title))
-
+                                                                            ':musical_note:'.format(current_song.title))
+                        print('    Awaiting Next Song...')
                         await play_next_song.wait()
             except discord.errors.ClientException as e:
-                print(e)
+                print('Error - ' + str(e))
         except AttributeError as e:
-            print(e)
-
+            print('Error - ' + str(e))
+    print('Error - Audio Player Loop Exited!!')
 
 def toggle_next(error):
+    print('Start - Toggle Next Called')
     client.loop.call_soon_threadsafe(play_next_song.set)
+    print('End - Toggle Next Called')
 
 
 @client.command(name='startminecraft',
                 help='Starts the minecraft server')
 async def startminecraft(ctx):
+    print('Start - Start Minecraft Command Called')
     statusProc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     statusStr = statusProc.stdout.decode('ascii')
 
     if 'minecraft' not in statusStr:
+        print('    Starting Minecraft Server')
         await ctx.send("Starting Minecraft Server")
         subprocess.call(['sh', '/home/media-server/Scripts/minecraft.sh'])
 
         # checks for any players within the server to auto shutdown
         # await asyncio.sleep(1800)
         # await check_for_players.start(ctx)
+        print('    Started Minecraft Server')
     else:
         await ctx.send("Minecraft server is already running")
+        print('    Minecraft server is already running')
+    print('End - Start Minecraft Command Called')
 
 
 @client.command(name='stopminecraft',
                 help='Stops the minecraft server (Assuming it is running)')
 async def stopminecraft(ctx):
+    print('Start - Stop Minecraft Command Called')
     status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     status_str = status_proc.stdout.decode('ascii')
 
@@ -217,8 +264,11 @@ async def stopminecraft(ctx):
         await ctx.send("Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
         check_for_players.stop()
         subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
+        print('    Minecraft server stopped')
     else:
         await ctx.send("Minecraft server is not running")
+        print('    Minecraft server is not running')
+    print('End - Stop Minecraft Command Called')
 
 
 @tasks.loop(minutes=30)
@@ -263,33 +313,40 @@ async def check_for_players(ctx):
                 help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
                 pass_context=True)
 async def play(ctx, _):
+    print('Start - Play Command Called')
     search = ctx.message.content[5:].strip()
     is_url = search.find(r"https://") != -1
 
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
+        print('    Error - You are not connected to a voice channel')
         return
     else:
         channel = ctx.message.author.voice.channel
 
     if ctx.guild.voice_client not in ctx.bot.voice_clients:
         await channel.connect()
+        print('    Connected Rivenbot to Channel')
 
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
     if is_url is False:
         await ctx.send("**Searching Youtube: **" + search)
+        print('    Searching Youtube')
 
     players = await YTDLSource.from_url(search, loop=client.loop, stream=True)
 
     if players is not None:
         if not voice_channel.is_playing() and len(players) == 1:
             await ctx.send('**Loading Audio...**')
+            print('    Loading Audio...')
         elif not voice_channel.is_playing() and len(players) > 1:
             await ctx.send('**Playlist Being Added to Queue...**')
+            print('    Playlist Being Added to Queue...')
         else:
             await ctx.send('**Adding Audio to Queue...**')
+            print('    Adding Audio to Queue...')
 
         if len(players) == 1:
             await songs.put([ctx, players[0]])
@@ -298,10 +355,12 @@ async def play(ctx, _):
                 await songs.put([ctx, current_player])
     else:
         await ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
-
+        print('    No video formats found!')
+    print('End - Play Command Called')
 
 @client.command(name='pause', help='Pauses the audio')
 async def pause(ctx):
+    print('Start - Pause Command Called')
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
@@ -310,12 +369,16 @@ async def pause(ctx):
             voice_channel.pause()
         else:
             await ctx.send(":exclamation: No music is playing :exclamation:")
+            print('    No music is playing!')
     else:
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
+        print(r"    I'm not in a voice channel right now")
+    print('End - Pause Command Called')
 
 
 @client.command(name='resume', help='Resumes the current audio')
 async def resume(ctx):
+    print('Start - Resume Command Called')
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
@@ -324,24 +387,31 @@ async def resume(ctx):
             voice_channel.resume()
         else:
             await ctx.send(":exclamation: Current song is not paused :exclamation:")
+            print('    Current song is not paused!')
     else:
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
+        print(r"    I'm not in a voice channel right now")
+    print('End - Resume Command Called')
 
 
 @client.command(name='leave', help='Stops the music and makes me leave the voice channel')
 async def leave(ctx):
+    print('Start - Leave Command Called')
     voice_client = ctx.message.guild.voice_client
 
     if ctx.guild.voice_client in ctx.bot.voice_clients:
         await voice_client.disconnect()
     else:
         await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
+        print(r"    I'm not in a voice channel right now")
 
     empty_queue(songs)
+    print('End - Leave Command Called')
 
 
 @client.command(name='clear', help='Clears the queue and stops the music')
 async def clear(ctx):
+    print('Start - Clear Command Called')
     guild = ctx.message.guild
     voice_channel = guild.voice_client
 
@@ -350,15 +420,18 @@ async def clear(ctx):
 
     if ctx.guild.voice_client in ctx.bot.voice_clients:
         voice_channel.stop()
+    print('End - Clear Command Called')
 
 
 def empty_queue(q: asyncio.Queue):
+    print('Start - Empty Queue')
     if not q.empty():
         for _ in range(q.qsize()):
             # Depending on your program, you may want to
             # catch QueueEmpty
             q.get_nowait()
             q.task_done()
+    print('End - Empty Queue')
 
 
 client.loop.create_task(audio_player_task())

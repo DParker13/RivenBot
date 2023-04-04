@@ -16,7 +16,7 @@ args = parser.parse_args()
 YT_PASSWORD = args.ytpass
 DIS_TOKEN = args.distoken
 
-logger = Logger(path=args.logpath, enable_logs=args.enablelogs)
+logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
 riven_bot = Riven(logger, args.status, YT_PASSWORD)
 
 riven_bot.client.loop.create_task(riven_bot.audio_player_task())

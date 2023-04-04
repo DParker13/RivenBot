@@ -2,7 +2,6 @@ import argparse
 from Logger import Logger
 from Riven import Riven
 
-
 # Command line arguments
 parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
 parser.add_argument("--ytpass", help="Youtube account password")
@@ -19,5 +18,5 @@ DIS_TOKEN = args.distoken
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
 riven_bot = Riven(logger, args.status, YT_PASSWORD)
 
-riven_bot.client.loop.create_task(riven_bot.audio_player_task())
-riven_bot.client.run(DIS_TOKEN)
+riven_bot.loop.create_task(riven_bot.audio_player_task())
+riven_bot.run(DIS_TOKEN)

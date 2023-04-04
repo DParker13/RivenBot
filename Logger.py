@@ -12,12 +12,10 @@ class Logger:
 
     def setup_logs(self):
         now = datetime.datetime.now()
-        log_exists = True
         iteration = 0
-        while log_exists:
+        while True:
             self.file = str(self.base_path) + 'log_' + now.strftime('%Y%m%d_') + str(iteration) + '.log'
             if not os.path.isfile(self.file):
-                log_exists = False
                 break
             iteration += 1
 

@@ -2,6 +2,7 @@ import asyncio
 import discord
 import subprocess
 from YTDL import YTDL
+from MinecraftCommands import MinecraftCommands
 from discord.ext import commands, tasks
 from file_read_backwards import FileReadBackwards
 
@@ -15,6 +16,7 @@ class Riven(commands.Bot):
         self.logger = logger
         self.status = status
         self.yt_pass = yt_pass
+        self.minecraft_commands = MinecraftCommands(self, Riven).add_minecraft_commands()
         self.add_commands()
 
     async def on_ready(self):
@@ -54,67 +56,6 @@ class Riven(commands.Bot):
             self.logger.print('Start - Ping Command Called')
             await ctx.send(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
             self.logger.print('End - Ping Command Called')
-
-        @self.command(name='skip', help='Skips the current song in the queue')
-        async def skip(ctx):
-            self.logger.print('Start - Skip Command Called')
-            guild = ctx.message.guild
-            voice_channel = guild.voice_client
-
-            if ctx.guild.voice_client in ctx.bot.voice_clients:
-                if voice_channel.is_playing():
-                    self.logger.print("    Skipping current audio!")
-                    await ctx.send("**Skipping current audio!**")
-                    self.logger.print("    Skipping current audio!")
-                    voice_channel.stop()
-                else:
-                    self.logger.print("    There is nothing in the queue to skip")
-                    await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
-                    self.logger.print("    There is nothing in the queue to skip")
-            else:
-                self.logger.print(r"I'm not in a voice channel right now")
-                await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
-                self.logger.print(r"I'm not in a voice channel right now")
-            self.logger.print('End - Skip Command Called')
-
-        @self.command(name='startminecraft',
-                      help='Starts the minecraft server')
-        async def startminecraft(ctx):
-            self.logger.print('Start - Start Minecraft Command Called')
-            status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-            status_str = status_proc.stdout.decode('ascii')
-
-            if 'minecraft' not in status_str:
-                self.logger.print('    Starting Minecraft Server')
-                await ctx.send("Starting Minecraft Server")
-                subprocess.call(['sh', '/home/media-server/Scripts/minecraft.sh'])
-
-                # checks for any players within the server to auto shutdown
-                # await asyncio.sleep(1800)
-                # await check_for_players.start(ctx)
-                self.logger.print('    Started Minecraft Server')
-            else:
-                await ctx.send("Minecraft server is already running")
-                self.logger.print('    Minecraft server is already running')
-            self.logger.print('End - Start Minecraft Command Called')
-
-        @self.command(name='stopminecraft',
-                      help='Stops the minecraft server (Assuming it is running)')
-        async def stopminecraft(ctx):
-            self.logger.print('Start - Stop Minecraft Command Called')
-            status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-            status_str = status_proc.stdout.decode('ascii')
-
-            if 'minecraft' in status_str:
-                await ctx.send(
-                    "Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
-                Riven.check_for_players.stop()
-                subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
-                self.logger.print('    Minecraft server stopped')
-            else:
-                await ctx.send("Minecraft server is not running")
-                self.logger.print('    Minecraft server is not running')
-            self.logger.print('End - Stop Minecraft Command Called')
 
         @self.command(name='play',
                       help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
@@ -198,6 +139,28 @@ class Riven(commands.Bot):
                 await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
                 self.logger.print(r"    I'm not in a voice channel right now")
             self.logger.print('End - Resume Command Called')
+
+        @self.command(name='skip', help='Skips the current song in the queue')
+        async def skip(ctx):
+            self.logger.print('Start - Skip Command Called')
+            guild = ctx.message.guild
+            voice_channel = guild.voice_client
+
+            if ctx.guild.voice_client in ctx.bot.voice_clients:
+                if voice_channel.is_playing():
+                    self.logger.print("    Skipping current audio!")
+                    await ctx.send("**Skipping current audio!**")
+                    self.logger.print("    Skipping current audio!")
+                    voice_channel.stop()
+                else:
+                    self.logger.print("    There is nothing in the queue to skip")
+                    await ctx.send(r"<:cring:758870529599209502> There is nothing in the queue to skip")
+                    self.logger.print("    There is nothing in the queue to skip")
+            else:
+                self.logger.print(r"I'm not in a voice channel right now")
+                await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
+                self.logger.print(r"I'm not in a voice channel right now")
+            self.logger.print('End - Skip Command Called')
 
         @self.command(name='leave', help='Stops the music and makes me leave the voice channel')
         async def leave(ctx):

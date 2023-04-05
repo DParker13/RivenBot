@@ -32,9 +32,7 @@ class Riven(commands.Bot):
 
     async def on_voice_state_update(self, member, before, after):
         if not member.id == self.user.id:
-            self.logger.print("Something went wrong in 'on_voice_state_update'")
             return
-
         elif before.channel is None:
             voice = after.channel.guild.voice_client
             timeout = 0

@@ -34,7 +34,7 @@ class YoutubeCommands:
                 await ctx.send("**Searching Youtube: **" + search)
                 self.logger.print('    Searching Youtube')
 
-            players = await YTDL(yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
+            players = await YTDL(source=self.client.source, yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
 
             if players is not None:
                 if not voice_channel.is_playing() and len(players) == 1:
@@ -119,7 +119,9 @@ class YoutubeCommands:
             voice_client = ctx.message.guild.voice_client
 
             if ctx.guild.voice_client in ctx.bot.voice_clients:
+                self.logger.print('Start - Disconnecting')
                 await voice_client.disconnect()
+                self.logger.print('End - Disconnecting')
             else:
                 await ctx.send(r"<:cring:758870529599209502> I'm not in a voice channel right now")
                 self.logger.print(r"    I'm not in a voice channel right now")

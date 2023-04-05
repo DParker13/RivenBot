@@ -39,7 +39,7 @@ class YoutubeCommands:
                 await ctx.send("**Searching Youtube: **" + search)
                 self.logger.print('    Searching Youtube')
 
-            players = await self.ytdl.add_functions().from_url(search, loop=self.client.loop, stream=True)
+            players = await self.ytdl.from_url(search, loop=self.client.loop, stream=True)
 
             if players is not None:
                 if not voice_channel.is_playing() and len(players) == 1:

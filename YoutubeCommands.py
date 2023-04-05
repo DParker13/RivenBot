@@ -8,12 +8,6 @@ class YoutubeCommands:
         self.yt_pass = yt_pass
 
     def add_youtube_commands(self):
-        @self.client.command(name='ping', help='Returns the latency')
-        async def ping(ctx):
-            self.logger.print('Start - Ping Command Called')
-            await ctx.send(f'**Pong!** Latency: {round(self.client.latency * 1000)}ms')
-            self.logger.print('End - Ping Command Called')
-
         @self.client.command(name='play',
                              help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
                              pass_context=True)

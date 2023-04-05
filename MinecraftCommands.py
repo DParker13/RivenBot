@@ -1,17 +1,17 @@
 import subprocess
-from Riven import Riven
 
 
 class MinecraftCommands:
 
-    def __init__(self, client, riven):
+    def __init__(self, client, riven, logger):
         self.client = client
         self.riven = riven
+        self.logger = logger
         self.add_minecraft_commands()
 
     def add_minecraft_commands(self):
-        @self.command(name='startminecraft',
-                      help='Starts the minecraft server')
+        @self.riven.command(name='startminecraft',
+                            help='Starts the minecraft server')
         async def startminecraft(ctx):
             self.logger.print('Start - Start Minecraft Command Called')
             status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -31,8 +31,8 @@ class MinecraftCommands:
                 self.logger.print('    Minecraft server is already running')
             self.logger.print('End - Start Minecraft Command Called')
 
-        @self.command(name='stopminecraft',
-                      help='Stops the minecraft server (Assuming it is running)')
+        @self.riven.command(name='stopminecraft',
+                            help='Stops the minecraft server (Assuming it is running)')
         async def stopminecraft(ctx):
             self.logger.print('Start - Stop Minecraft Command Called')
             status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)

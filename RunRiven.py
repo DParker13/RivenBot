@@ -19,7 +19,7 @@ YT_PASSWORD = args.ytpass
 DIS_TOKEN = args.distoken
 SPOT_CLIENT = args.spotclient
 SPOT_SECRET = args.spotsecret
-ytdl = YTDL(yt_password=YT_PASSWORD)
+ytdl = YTDL(source=None, data=None, yt_password=YT_PASSWORD)
 
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
 riven_bot = Riven(logger, args.status, ytdl)

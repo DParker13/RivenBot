@@ -1,5 +1,3 @@
-
-
 class YoutubeCommands:
     def __init__(self, client, logger, ytdl):
         self.client = client

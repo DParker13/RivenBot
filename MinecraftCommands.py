@@ -7,7 +7,6 @@ class MinecraftCommands:
         self.client = client
         self.riven = riven
         self.logger = logger
-        self.add_minecraft_commands()
 
     def add_minecraft_commands(self):
         @self.riven.command(name='startminecraft',

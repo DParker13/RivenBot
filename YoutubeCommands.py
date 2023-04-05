@@ -12,50 +12,54 @@ class YoutubeCommands:
                              help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
                              pass_context=True)
         async def play(ctx):
-            self.logger.print('Start - Play Command Called')
-            search = ctx.message.content[5:].strip()
-            is_url = search.find(r"https://") != -1
+            try:
+                self.logger.print('Start - Play Command Called')
+                search = ctx.message.content[5:].strip()
+                is_url = search.find(r"https://") != -1
 
-            if not ctx.message.author.voice:
-                await ctx.send("You are not connected to a voice channel")
-                self.logger.print('    Error - You are not connected to a voice channel')
-                return
-            else:
-                channel = ctx.message.author.voice.channel
-
-            if ctx.guild.voice_client not in ctx.bot.voice_clients:
-                await channel.connect()
-                self.logger.print('    Connected Rivenbot to Channel')
-
-            guild = ctx.message.guild
-            voice_channel = guild.voice_client
-
-            if is_url is False:
-                await ctx.send("**Searching Youtube: **" + search)
-                self.logger.print('    Searching Youtube')
-
-            players = await YTDL(source=self.client.source, yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
-
-            if players is not None:
-                if not voice_channel.is_playing() and len(players) == 1:
-                    await ctx.send('**Loading Audio...**')
-                    self.logger.print('    Loading Audio...')
-                elif not voice_channel.is_playing() and len(players) > 1:
-                    await ctx.send('**Playlist Being Added to Queue...**')
-                    self.logger.print('    Playlist Being Added to Queue...')
+                if not ctx.message.author.voice:
+                    await ctx.send("You are not connected to a voice channel")
+                    self.logger.print('    Error - You are not connected to a voice channel')
+                    return
                 else:
-                    await ctx.send('**Adding Audio to Queue...**')
-                    self.logger.print('    Adding Audio to Queue...')
+                    channel = ctx.message.author.voice.channel
 
-                if len(players) == 1:
-                    await self.client.songs.put([ctx, players[0]])
+                if ctx.guild.voice_client not in ctx.bot.voice_clients:
+                    self.logger.print('    Connecting Rivenbot to Channel')
+                    await channel.connect()
+                    self.logger.print('    Connected Rivenbot to Channel')
+
+                guild = ctx.message.guild
+                voice_channel = guild.voice_client
+
+                if is_url is False:
+                    await ctx.send("**Searching Youtube: **" + search)
+                    self.logger.print('    Searching Youtube')
+
+                players = await YTDL(source=self.client.source, yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
+
+                if players is not None:
+                    if not voice_channel.is_playing() and len(players) == 1:
+                        await ctx.send('**Loading Audio...**')
+                        self.logger.print('    Loading Audio...')
+                    elif not voice_channel.is_playing() and len(players) > 1:
+                        await ctx.send('**Playlist Being Added to Queue...**')
+                        self.logger.print('    Playlist Being Added to Queue...')
+                    else:
+                        await ctx.send('**Adding Audio to Queue...**')
+                        self.logger.print('    Adding Audio to Queue...')
+
+                    if len(players) == 1:
+                        await self.client.songs.put([ctx, players[0]])
+                    else:
+                        for current_player in players:
+                            await self.client.songs.put([ctx, current_player])
                 else:
-                    for current_player in players:
-                        await self.client.songs.put([ctx, current_player])
-            else:
-                await ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
-                self.logger.print('    No video formats found!')
-            self.logger.print('End - Play Command Called')
+                    await ctx.send(":exclamation:ERROR:exclamation:: No video formats found!")
+                    self.logger.print('    No video formats found!')
+                self.logger.print('End - Play Command Called')
+            except Exception as e:
+                self.logger.print('Error - ' + str(e))
 
         @self.client.command(name='pause', help='Pauses the audio')
         async def pause(ctx):

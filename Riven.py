@@ -16,8 +16,8 @@ class Riven(commands.Bot):
         self.logger = logger
         self.status = status
         self.yt_pass = yt_pass
-        self.minecraft_commands = MinecraftCommands(self, Riven, self.logger).add_minecraft_commands()
         self.add_commands()
+        MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))

@@ -3,14 +3,13 @@ import subprocess
 
 class MinecraftCommands:
 
-    def __init__(self, client, riven, logger):
+    def __init__(self, client, logger):
         self.client = client
-        self.riven = riven
         self.logger = logger
 
     def add_minecraft_commands(self):
-        @self.riven.command(name='startminecraft',
-                            help='Starts the minecraft server')
+        @self.client.command(name='startminecraft',
+                             help='Starts the minecraft server')
         async def startminecraft(ctx):
             self.logger.print('Start - Start Minecraft Command Called')
             status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -30,8 +29,8 @@ class MinecraftCommands:
                 self.logger.print('    Minecraft server is already running')
             self.logger.print('End - Start Minecraft Command Called')
 
-        @self.riven.command(name='stopminecraft',
-                            help='Stops the minecraft server (Assuming it is running)')
+        @self.client.command(name='stopminecraft',
+                             help='Stops the minecraft server (Assuming it is running)')
         async def stopminecraft(ctx):
             self.logger.print('Start - Stop Minecraft Command Called')
             status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -40,7 +39,7 @@ class MinecraftCommands:
             if 'minecraft' in status_str:
                 await ctx.send(
                     "Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
-                self.riven.check_for_players.stop()
+                self.client.check_for_players.stop()
                 subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
                 self.logger.print('    Minecraft server stopped')
             else:

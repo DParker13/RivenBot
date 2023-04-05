@@ -19,10 +19,9 @@ YT_PASSWORD = args.ytpass
 DIS_TOKEN = args.distoken
 SPOT_CLIENT = args.spotclient
 SPOT_SECRET = args.spotsecret
-ytdl = YTDL(source=None, data=None, yt_password=YT_PASSWORD)
 
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
-riven_bot = Riven(logger, args.status, ytdl)
+riven_bot = Riven(logger, args.status, YT_PASSWORD)
 
 riven_bot.loop.create_task(riven_bot.audio_player_task())
 riven_bot.run(DIS_TOKEN)

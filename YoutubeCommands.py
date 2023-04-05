@@ -26,7 +26,7 @@ class YoutubeCommands:
 
                 if ctx.guild.voice_client not in ctx.bot.voice_clients:
                     self.logger.print('    Connecting Rivenbot to Channel')
-                    await channel.connect()
+                    await channel.connect(timeout=5)
                     self.logger.print('    Connected Rivenbot to Channel')
 
                 guild = ctx.message.guild

@@ -48,6 +48,10 @@ class Riven(commands.Bot):
                 if not voice.is_connected():
                     break
 
+    # Starts the queue audio player loop
+    async def setup_hook(self):
+        await self.audio_player_task()
+
     def add_commands(self):
         @self.command(name='ping', help='Returns the latency')
         async def ping(ctx):

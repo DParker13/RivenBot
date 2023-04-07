@@ -1,4 +1,7 @@
 import argparse
+
+import discord
+
 from Logger import Logger
 from Riven import Riven
 
@@ -20,7 +23,5 @@ SPOT_CLIENT = args.spotclient
 SPOT_SECRET = args.spotsecret
 
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
-riven_bot = Riven(logger, args.status, YT_PASSWORD)
-
-riven_bot.loop.create_task(riven_bot.audio_player_task())
+riven_bot = Riven(logger, discord.Status.online, YT_PASSWORD)
 riven_bot.run(DIS_TOKEN)

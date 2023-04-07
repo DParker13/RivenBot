@@ -66,7 +66,7 @@ class Riven(commands.Bot):
                 q.task_done()
         self.logger.print('End - Empty Queue')
 
-    @tasks.loop(1)
+    @tasks.loop(seconds=1)
     async def audio_player_task(self):
         try:
             Riven.play_next_song.clear()

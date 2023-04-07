@@ -16,8 +16,8 @@ class Riven(commands.Bot):
         self.logger = logger
         self.status = status
         self.add_commands()
-        MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
-        YoutubeCommands(client=self, logger=self.logger, yt_pass=yt_pass).add_youtube_commands()
+        await MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
+        await YoutubeCommands(client=self, logger=self.logger, yt_pass=yt_pass).add_youtube_commands()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))

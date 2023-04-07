@@ -12,12 +12,12 @@ class Riven(commands.Bot):
     play_next_song = asyncio.Event()
 
     def __init__(self, logger, status, yt_pass):
-        commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
+        commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.default())
         self.logger = logger
         self.status = status
         self.add_commands()
-        await MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
-        await YoutubeCommands(client=self, logger=self.logger, yt_pass=yt_pass).add_youtube_commands()
+        MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
+        YoutubeCommands(client=self, logger=self.logger, yt_pass=yt_pass).add_youtube_commands()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))

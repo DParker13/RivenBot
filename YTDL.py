@@ -8,6 +8,7 @@ class YTDL(discord.PCMVolumeTransformer):
     ffmpeg_options = {
         'options': '-vn'
     }
+    ytdl = None
 
     def __init__(self, source, *, data, volume=0.5, yt_password):
         super().__init__(source, volume)
@@ -32,50 +33,49 @@ class YTDL(discord.PCMVolumeTransformer):
             'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
             'cookiefile': 'cookies.txt'
         }
-        self.ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-        self.add_functions()
+        YTDL.ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
-    def add_functions(self):
-        async def from_url(cls, url, *, loop=None, stream=False):
-            loop = loop or asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(url, download=not stream))
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: YTDL.ytdl.extract_info(url, download=not stream))
 
-            # Checks if the link is a playlist
-            if 'entries' in data:
-                if len(data['entries']) == 1:
-                    # take first item from a playlist
-                    data = data['entries'][0]
+        # Checks if the link is a playlist
+        if 'entries' in data:
+            if len(data['entries']) == 1:
+                # take first item from a playlist
+                data = data['entries'][0]
 
-                    filename = data['url'] if stream else self.ytdl.prepare_filename(data)
-                    try:
-                        return [cls(discord.FFmpegPCMAudio(filename, **YTDL.ffmpeg_options),
-                                    data=data)]
-                    except yt_dlp.utils.DownloadError as e:
-                        print(e)
-                        return None
-                else:
-                    player_list = list()
-                    while len(data['entries']) != 0:
-                        current_data = data['entries'].pop(0)
-
-                        filename = current_data['url'] if stream else self.ytdl.prepare_filename(current_data)
-                        try:
-                            player_list.append(cls(discord.FFmpegPCMAudio(filename, **YTDL.ffmpeg_options),
-                                                   data=current_data))
-                        except yt_dlp.utils.DownloadError as e:
-                            print(e)
-                            player_list.append(None)
-
-                    return player_list
-
-            elif data is not None:
-                filename = data['url'] if stream else self.ytdl.prepare_filename(data)
+                filename = data['url'] if stream else YTDL.ytdl.prepare_filename(data)
                 try:
                     return [cls(discord.FFmpegPCMAudio(filename, **YTDL.ffmpeg_options),
                                 data=data)]
                 except yt_dlp.utils.DownloadError as e:
                     print(e)
                     return None
+            else:
+                player_list = list()
+                while len(data['entries']) != 0:
+                    current_data = data['entries'].pop(0)
 
-            print("DATA IS SET TO NONE")
-            return None
+                    filename = current_data['url'] if stream else YTDL.ytdl.prepare_filename(current_data)
+                    try:
+                        player_list.append(cls(discord.FFmpegPCMAudio(filename, **YTDL.ffmpeg_options),
+                                               data=current_data))
+                    except yt_dlp.utils.DownloadError as e:
+                        print(e)
+                        player_list.append(None)
+
+                return player_list
+
+        elif data is not None:
+            filename = data['url'] if stream else YTDL.ytdl.prepare_filename(data)
+            try:
+                return [cls(discord.FFmpegPCMAudio(filename, **YTDL.ffmpeg_options),
+                            data=data)]
+            except yt_dlp.utils.DownloadError as e:
+                print(e)
+                return None
+
+        print("DATA IS SET TO NONE")
+        return None

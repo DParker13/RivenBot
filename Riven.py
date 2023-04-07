@@ -12,7 +12,7 @@ class Riven(commands.Bot):
     play_next_song = asyncio.Event()
 
     def __init__(self, logger, status, yt_pass):
-        commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.default())
+        commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
         self.logger = logger
         self.status = status
         self.add_commands()

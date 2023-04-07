@@ -31,6 +31,7 @@ class YoutubeCommands:
 
                 guild = ctx.message.guild
                 voice_channel = guild.voice_client
+                self.logger.print("Voice Channel: " + str(voice_channel))
 
                 if is_url is False:
                     await ctx.send("**Searching Youtube: **" + search)

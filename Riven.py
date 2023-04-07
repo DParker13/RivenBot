@@ -18,6 +18,7 @@ class Riven(commands.Bot):
         self.add_commands()
         MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
+        self.audio_player_task.start()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))
@@ -48,10 +49,6 @@ class Riven(commands.Bot):
                 if not voice.is_connected():
                     break
 
-    # Starts the queue audio player loop
-    #async def setup_hook(self):
-    #    await self.audio_player_task()
-
     def add_commands(self):
         @self.command(name='ping', help='Returns the latency')
         async def ping(ctx):
@@ -69,44 +66,43 @@ class Riven(commands.Bot):
                 q.task_done()
         self.logger.print('End - Empty Queue')
 
+    @tasks.loop(1)
     async def audio_player_task(self):
-        while True:
+        try:
+            Riven.play_next_song.clear()
+            current = await Riven.songs.get()
+            current_song = current[1]
+            ctx = current[0]
+            guild = ctx.message.guild
+            voice_channel = guild.voice_client
+            self.logger.print("Playing - ", current[1].title)
+
             try:
-                Riven.play_next_song.clear()
-                current = await Riven.songs.get()
-                current_song = current[1]
-                ctx = current[0]
-                guild = ctx.message.guild
-                voice_channel = guild.voice_client
-                self.logger.print("Playing - ", current[1].title)
+                if not voice_channel.is_playing():
+                    self.logger.print('Start - Start Song in Queue')
+                    voice_channel.play(current_song, after=self.toggle_next)
 
-                try:
-                    if not voice_channel.is_playing():
-                        self.logger.print('Start - Start Song in Queue')
-                        voice_channel.play(current_song, after=self.toggle_next)
-
-                        if Riven.songs.qsize() == 0:
-                            self.logger.print(
-                                '    Starting Last Song - ' + str(current_song.title) + 'Queue Size: ' + str(
-                                    Riven.songs.qsize()))
-                            await ctx.send(
-                                ':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
-                            self.logger.print('    Awaiting Last Song...')
-                        else:
-                            self.logger.print(
-                                '    Starting Next Song - ' + str(current_song.title) + 'Queue Size: ' + str(
-                                    Riven.songs.qsize()))
-                            await ctx.send(
-                                '**Queue: **' + str(Riven.songs.qsize()) + '\n:musical_note: **Now playing:** {} '
-                                                                           ':musical_note:'.format(
-                                    current_song.title))
-                            self.logger.print('    Awaiting Next Song...')
-                            await Riven.play_next_song.wait()
-                except discord.errors.ClientException as e:
-                    self.logger.print('Error - ' + str(e))
-            except AttributeError as e:
+                    if Riven.songs.qsize() == 0:
+                        self.logger.print(
+                            '    Starting Last Song - ' + str(current_song.title) + 'Queue Size: ' + str(
+                                Riven.songs.qsize()))
+                        await ctx.send(
+                            ':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+                        self.logger.print('    Awaiting Last Song...')
+                    else:
+                        self.logger.print(
+                            '    Starting Next Song - ' + str(current_song.title) + 'Queue Size: ' + str(
+                                Riven.songs.qsize()))
+                        await ctx.send(
+                            '**Queue: **' + str(Riven.songs.qsize()) + '\n:musical_note: **Now playing:** {} '
+                                                                       ':musical_note:'.format(
+                                current_song.title))
+                        self.logger.print('    Awaiting Next Song...')
+                        await Riven.play_next_song.wait()
+            except discord.errors.ClientException as e:
                 self.logger.print('Error - ' + str(e))
-        self.logger.print('Error - Audio Player Loop Exited!!')
+        except AttributeError as e:
+            self.logger.print('Error - ' + str(e))
 
     def toggle_next(self, error):
         self.logger.print('Start - Toggle Next Called')

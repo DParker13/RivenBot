@@ -1,11 +1,8 @@
-from YTDL import YTDL
-
-
 class YoutubeCommands:
-    def __init__(self, client, logger, yt_pass):
+    def __init__(self, client, logger, ytdl):
         self.client = client
         self.logger = logger
-        self.yt_pass = yt_pass
+        self.ytdl = ytdl
 
     def add_youtube_commands(self):
         @self.client.command(name='play',
@@ -37,7 +34,7 @@ class YoutubeCommands:
                     await ctx.send("**Searching Youtube: **" + search)
                     self.logger.print('    Searching Youtube')
 
-                players = await YTDL(yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
+                players = await self.ytdl.from_url(search, loop=self.client.loop, stream=True)
 
                 if players is not None:
                     if not voice_channel.is_playing() and len(players) == 1:

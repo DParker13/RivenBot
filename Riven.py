@@ -18,7 +18,6 @@ class Riven(commands.Bot):
         self.add_commands()
         MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
-        self.audio_player_task.start()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))
@@ -48,6 +47,9 @@ class Riven(commands.Bot):
                     self.logger.print("Bot inactive for too long: leaving channel")
                 if not voice.is_connected():
                     break
+
+    async def setup_hook(self):
+        self.audio_player_task.start()
 
     def add_commands(self):
         @self.command(name='ping', help='Returns the latency')

@@ -2,6 +2,7 @@ from YTDL import YTDL
 
 
 class YoutubeCommands:
+    vc = None
     def __init__(self, client, logger, yt_pass):
         self.client = client
         self.logger = logger
@@ -26,7 +27,7 @@ class YoutubeCommands:
 
                 if ctx.guild.voice_client not in ctx.bot.voice_clients:
                     self.logger.print('    Connecting Rivenbot to Channel')
-                    voice_client = await channel.connect(timeout=5)
+                    YoutubeCommands.vc = await channel.connect(timeout=5)
                     self.logger.print('    Connected Rivenbot to Channel')
 
                 guild = ctx.message.guild
@@ -37,7 +38,7 @@ class YoutubeCommands:
                     await ctx.send("**Searching Youtube: **" + search)
                     self.logger.print('    Searching Youtube')
 
-                players = await YTDL(source=voice_client.source, data=None, yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
+                players = await YTDL(source=YoutubeCommands.vc.source, data=None, yt_password=self.yt_pass).add_functions().from_url(search, loop=self.client.loop, stream=True)
 
                 if players is not None:
                     if not voice_channel.is_playing() and len(players) == 1:

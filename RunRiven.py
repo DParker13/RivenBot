@@ -1,6 +1,4 @@
 import argparse
-import logging
-import logging.handlers
 from Logger import Logger
 from Riven import Riven
 
@@ -25,4 +23,4 @@ logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
 riven_bot = Riven(logger, args.status, YT_PASSWORD)
 
 riven_bot.loop.create_task(riven_bot.audio_player_task())
-riven_bot.run(DIS_TOKEN, log_handler=None)
+riven_bot.run(DIS_TOKEN)

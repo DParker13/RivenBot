@@ -7,7 +7,7 @@ class YoutubeCommands:
         self.logger = logger
         self.yt_pass = yt_pass
 
-    def add_youtube_commands(self):
+    async def add_youtube_commands(self):
         @self.client.command(name='play',
                              help='Plays music from Youtube URLs or it will automatically search Youtube for top result',
                              pass_context=True)

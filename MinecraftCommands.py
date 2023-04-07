@@ -7,7 +7,7 @@ class MinecraftCommands:
         self.client = client
         self.logger = logger
 
-    def add_minecraft_commands(self):
+    async def add_minecraft_commands(self):
         @self.client.command(name='startminecraft',
                              help='Starts the minecraft server')
         async def startminecraft(ctx):

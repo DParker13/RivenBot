@@ -72,35 +72,37 @@ class Riven(commands.Bot):
     async def audio_player_task(self):
         try:
             Riven.play_next_song.clear()
-            current = await Riven.songs.get()
-            current_song = current[1]
-            ctx = current[0]
+            queue_item = await Riven.songs.get()
+            current_video = queue_item[1]
+            ctx = queue_item[0]
             guild = ctx.message.guild
-            voice_channel = guild.voice_client
-            self.logger.print("Playing - ", current[1].title)
+            voice_client = guild.voice_client
+            self.logger.print("Trying to play - ", queue_item[1].title)
 
             try:
-                if not voice_channel.is_playing():
+                if not voice_client.is_playing():
                     self.logger.print('Start - Start Song in Queue')
-                    voice_channel.play(current_song, after=self.toggle_next)
+                    voice_client.play(current_video, after=self.toggle_next)
 
                     if Riven.songs.qsize() == 0:
                         self.logger.print(
-                            '    Starting Last Song - ' + str(current_song.title) + 'Queue Size: ' + str(
+                            '    Starting Last Song - ' + str(current_video.title) + ' Queue Size: ' + str(
                                 Riven.songs.qsize()))
                         await ctx.send(
-                            ':musical_note: **Now playing:** {} :musical_note:'.format(current_song.title))
+                            ':musical_note: **Now playing:** {} :musical_note:'.format(current_video.title))
                         self.logger.print('    Awaiting Last Song...')
                     else:
                         self.logger.print(
-                            '    Starting Next Song - ' + str(current_song.title) + 'Queue Size: ' + str(
+                            '    Starting Next Song - ' + str(current_video.title) + ' Queue Size: ' + str(
                                 Riven.songs.qsize()))
                         await ctx.send(
                             '**Queue: **' + str(Riven.songs.qsize()) + '\n:musical_note: **Now playing:** {} '
                                                                        ':musical_note:'.format(
-                                current_song.title))
-                        self.logger.print('    Awaiting Next Song...')
-                        await Riven.play_next_song.wait()
+                                current_video.title))
+                    self.logger.print('    Awaiting Next Song...')
+                    await Riven.play_next_song.wait()
+                else:
+                    self.logger.print('Voice_client Still Playing Audio!')
             except discord.errors.ClientException as e:
                 self.logger.print('Error - ' + str(e))
         except AttributeError as e:

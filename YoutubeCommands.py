@@ -27,8 +27,8 @@ class YoutubeCommands:
                     self.logger.print('    Connected Rivenbot to Channel')
 
                 guild = ctx.message.guild
-                voice_channel = guild.voice_client
-                self.logger.print("Voice Channel: " + str(voice_channel))
+                voice_client = guild.voice_client
+                self.logger.print("Voice Client (Channel): " + str(voice_client))
 
                 if is_url is False:
                     await ctx.send("**Searching Youtube: **" + search)
@@ -37,10 +37,10 @@ class YoutubeCommands:
                 players = await self.ytdl.from_url(search, loop=self.client.loop, stream=True)
 
                 if players is not None:
-                    if not voice_channel.is_playing() and len(players) == 1:
+                    if not voice_client.is_playing() and len(players) == 1:
                         await ctx.send('**Loading Audio...**')
                         self.logger.print('    Loading Audio...')
-                    elif not voice_channel.is_playing() and len(players) > 1:
+                    elif not voice_client.is_playing() and len(players) > 1:
                         await ctx.send('**Playlist Being Added to Queue...**')
                         self.logger.print('    Playlist Being Added to Queue...')
                     else:

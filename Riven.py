@@ -70,7 +70,7 @@ class Riven(commands.Bot):
                     Riven.loop_at.stop()
 
     @tasks.loop(hours=1)
-    def loop_at(self, ctx):
+    async def loop_at(self, ctx):
         await ctx.send('@NightTreks')
 
     def empty_queue(self, q: asyncio.Queue):

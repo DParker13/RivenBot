@@ -68,7 +68,7 @@ class Riven(commands.Bot):
             else:
                 Riven.isAnnoyKean = False
                 if Riven.loop_at.is_running():
-                    Riven.loop_at.cancel()
+                    Riven.loop_at(ctx).close()
             self.logger.print('End - Annoy Kean')
 
     @tasks.loop(hours=1)

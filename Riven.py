@@ -10,6 +10,7 @@ from file_read_backwards import FileReadBackwards
 class Riven(commands.Bot):
     songs = asyncio.Queue()
     play_next_song = asyncio.Event()
+    isAnnoyKean = False
 
     def __init__(self, logger, status, ytdl):
         commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
@@ -57,6 +58,20 @@ class Riven(commands.Bot):
             self.logger.print('Start - Ping Command Called')
             await ctx.send(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
             self.logger.print('End - Ping Command Called')
+
+        @self.command(name='Annoy Kean', help="@'s kean every hour")
+        async def annoykean(ctx):
+            if Riven.isAnnoyKean is False:
+                Riven.isAnnoyKean = True
+                Riven.loop_at(ctx)
+            else:
+                Riven.isAnnoyKean = False
+                if Riven.loop_at.is_running():
+                    Riven.loop_at.stop()
+
+    @tasks.loop(hours=1)
+    def loop_at(self, ctx):
+        await ctx.send('@NightTreks')
 
     def empty_queue(self, q: asyncio.Queue):
         self.logger.print('Start - Empty Queue')

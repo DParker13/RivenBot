@@ -59,7 +59,7 @@ class Riven(commands.Bot):
             await ctx.send(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
             self.logger.print('End - Ping Command Called')
 
-        @self.command(name='Annoy Kean', help="@'s kean every hour")
+        @self.command(name='annoykean', help="@'s kean every hour")
         async def annoykean(ctx):
             self.logger.print('Start - Annoy Kean')
             if Riven.isAnnoyKean is False:

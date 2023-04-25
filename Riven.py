@@ -61,17 +61,21 @@ class Riven(commands.Bot):
 
         @self.command(name='Annoy Kean', help="@'s kean every hour")
         async def annoykean(ctx):
+            self.logger.print('Start - Annoy Kean')
             if Riven.isAnnoyKean is False:
                 Riven.isAnnoyKean = True
-                Riven.loop_at(ctx)
+                await Riven.loop_at(ctx)
             else:
                 Riven.isAnnoyKean = False
                 if Riven.loop_at.is_running():
-                    Riven.loop_at.stop()
+                    Riven.loop_at.cancel()
+            self.logger.print('End - Annoy Kean')
 
     @tasks.loop(hours=1)
     async def loop_at(self, ctx):
+        self.logger.print('Start Loop - Annoy Kean')
         await ctx.send('@NightTreks')
+        self.logger.print('End Loop - Annoy Kean')
 
     def empty_queue(self, q: asyncio.Queue):
         self.logger.print('Start - Empty Queue')

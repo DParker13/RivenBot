@@ -12,14 +12,14 @@ class Riven(commands.Bot):
     songs = asyncio.Queue()
     play_next_song = asyncio.Event()
 
-    def __init__(self, logger, status, ytdl, openai_key, chat_path):
+    def __init__(self, logger, status, ytdl, openai_key):
         commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
         self.logger = logger
         self.status = status
         self.add_commands()
         MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
-        OpenAICommands(client=self, logger=self.logger, api_key=openai_key, chat_file_path=chat_path).addOpenAICommands()
+        OpenAICommands(client=self, logger=self.logger, api_key=openai_key).addOpenAICommands()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))

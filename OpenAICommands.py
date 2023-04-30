@@ -9,7 +9,6 @@ class OpenAICommands:
         self.logger = logger
         openai.api_key = api_key
 
-
     def addOpenAICommands(self):
         @self.client.command(name='chat',
                              help='Chat with OpenAI ChatGPT 3.5 Turbo bot model')
@@ -27,3 +26,11 @@ class OpenAICommands:
 
             self.logger.print("ChatGPT Response -", resp)
             await ctx.send(resp)
+
+        @self.client.command(name='image',
+                             help='Create an image from a text prompt using DALL-E model')
+        async def image(ctx):
+            prompt = ctx.message.content[5:].strip()
+            image_resp = openai.Image.create(prompt=prompt, n=1, size="1024x1024", response_format="url")
+
+            await ctx.send(image_resp["data"][0]["url"])

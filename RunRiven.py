@@ -10,8 +10,8 @@ from Riven import Riven
 parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
 parser.add_argument("--ytpass", help="Youtube account password")
 parser.add_argument("--distoken", help="Discord token")
-parser.add_argument("--spotclient", help="Spotify client id")
-parser.add_argument("--spotsecret", help="Spotify client secret")
+parser.add_argument("--openaikey", help="OpenAI Secret Key")
+parser.add_argument("--chatpath", help="OpenAI chat file path")
 parser.add_argument("--logpath", help="Base path for log files")
 parser.add_argument("--enablelogs", help="Set 'True' to enable logs")
 parser.add_argument("--status", help="The Discord status that appears under the bot name in Discord app")
@@ -20,8 +20,8 @@ args = parser.parse_args()
 # Setting constants
 YT_PASSWORD = args.ytpass
 DIS_TOKEN = args.distoken
-SPOT_CLIENT = args.spotclient
-SPOT_SECRET = args.spotsecret
+OPENAI_KEY = args.openaikey
+CHAT_PATH = args.chatpath
 
 ytdl_format_options = {
     'username': 'meepmeep04@gmail.com',
@@ -100,5 +100,5 @@ class YTDL(discord.PCMVolumeTransformer):
 
 
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
-riven_bot = Riven(logger, discord.Status.online, YTDL)
+riven_bot = Riven(logger, discord.Status.online, YTDL, OPENAI_KEY, CHAT_PATH)
 riven_bot.run(DIS_TOKEN)

@@ -3,6 +3,7 @@ import discord
 import subprocess
 from MinecraftCommands import MinecraftCommands
 from YoutubeCommands import YoutubeCommands
+from OpenAICommands import OpenAICommands
 from discord.ext import commands, tasks
 from file_read_backwards import FileReadBackwards
 
@@ -10,15 +11,15 @@ from file_read_backwards import FileReadBackwards
 class Riven(commands.Bot):
     songs = asyncio.Queue()
     play_next_song = asyncio.Event()
-    isAnnoyKean = False
 
-    def __init__(self, logger, status, ytdl):
+    def __init__(self, logger, status, ytdl, openai_key, chat_path):
         commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
         self.logger = logger
         self.status = status
         self.add_commands()
         MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
+        OpenAICommands(client=self, logger=self.logger, api_key=openai_key, chat_file_path=chat_path).addOpenAICommands()
 
     async def on_ready(self):
         await self.change_presence(activity=discord.Game(self.status))
@@ -58,24 +59,6 @@ class Riven(commands.Bot):
             self.logger.print('Start - Ping Command Called')
             await ctx.send(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
             self.logger.print('End - Ping Command Called')
-
-        @self.command(name='annoykean', help="@'s kean every hour")
-        async def annoykean(ctx):
-            self.logger.print('Start - Annoy Kean')
-            if Riven.isAnnoyKean is False:
-                Riven.isAnnoyKean = True
-                await Riven.loop_at(ctx)
-            else:
-                Riven.isAnnoyKean = False
-                if Riven.loop_at.is_running():
-                    Riven.loop_at(ctx).close()
-            self.logger.print('End - Annoy Kean')
-
-    @tasks.loop(hours=1)
-    async def loop_at(self, ctx):
-        self.logger.print('Start Loop - Annoy Kean')
-        await ctx.send('@NightTreks')
-        self.logger.print('End Loop - Annoy Kean')
 
     def empty_queue(self, q: asyncio.Queue):
         self.logger.print('Start - Empty Queue')

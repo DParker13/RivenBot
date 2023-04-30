@@ -25,10 +25,10 @@ class OpenAICommands:
             content = ctx.message.content[5:].strip()
 
             self.logger.print("Chat -", content)
-            self.chat_history.append(str({"role": "user", "content": content}))
-            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.chat_history)
+            self.chat_history.append({"role": "user", "content": content})
+            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=list(self.chat_history))
             resp = completion.choices[0].message.content.strip("\n").strip()
-            self.chat_history.append(str({"role": "assistant", "content": resp}))
+            self.chat_history.append({"role": "assistant", "content": resp})
 
             # Writes user content and chatGPT response to file
             with open(self.chat_file_path, "w") as file:

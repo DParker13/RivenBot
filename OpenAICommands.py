@@ -32,7 +32,7 @@ class OpenAICommands:
 
             # Writes user content and chatGPT response to file
             with open(self.chat_file_path, "w") as file:
-                file.writelines(self.chat_history)
+                file.writelines(list(self.chat_history))
 
             self.logger.print("ChatGPT Response -", resp)
             await ctx.send(resp)

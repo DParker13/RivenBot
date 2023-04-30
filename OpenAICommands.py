@@ -15,7 +15,7 @@ class OpenAICommands:
         async def chat(ctx):
             content = ctx.message.content[5:].strip()
 
-            if len(self.chat_history) >= 500:
+            if len(self.chat_history) >= 25:
                 del self.chat_history[0]
 
             self.logger.print("Chat -", content)

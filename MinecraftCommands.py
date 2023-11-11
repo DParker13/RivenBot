@@ -13,9 +13,9 @@ class MinecraftCommands:
         async def startminecraft(ctx):
             self.logger.print('Start - Start Minecraft Command Called')
             status_proc = subprocess.run('/home/media-server/Scripts/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-            status_str = status_proc.stdout.decode('ascii')
+            status_str = status_proc.stdout.decode('utf-8')
 
-            if 'minecraft' not in status_str:
+            if '"running": false' in status_str:
                 self.logger.print('    Starting Minecraft Server')
                 await ctx.send("Starting Minecraft Server")
                 subprocess.call('/home/media-server/Scripts/minecraft-start.sh', shell=True)
@@ -31,9 +31,9 @@ class MinecraftCommands:
         async def stopminecraft(ctx):
             self.logger.print('Start - Stop Minecraft Command Called')
             status_proc = subprocess.run('/home/media-server/Scripts/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-            status_str = status_proc.stdout.decode('ascii')
+            status_str = status_proc.stdout.decode('utf-8')
 
-            if '"status":"ok"' in status_str:
+            if '"running": true' in status_str:
                 await ctx.send(
                     "Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
                 self.client.check_for_players.stop()

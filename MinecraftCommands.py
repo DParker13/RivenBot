@@ -12,13 +12,13 @@ class MinecraftCommands:
                              help='Starts the minecraft server')
         async def startminecraft(ctx):
             self.logger.print('Start - Start Minecraft Command Called')
-            status_proc = subprocess.run('/home/media-server/Scripts/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            status_proc = subprocess.run('/home/media-server/Scripts/Minecraft/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
             status_str = status_proc.stdout.decode('utf-8')
 
             if '"running":false' in status_str:
                 self.logger.print('    Starting Minecraft Server')
                 await ctx.send("Starting Minecraft Server")
-                subprocess.call('/home/media-server/Scripts/minecraft-start.sh', shell=True)
+                subprocess.call('/home/media-server/Scripts/Minecraft/minecraft-start.sh', shell=True)
 
                 self.logger.print('    Started Minecraft Server')
             else:
@@ -30,14 +30,13 @@ class MinecraftCommands:
                              help='Stops the minecraft server (Assuming it is running)')
         async def stopminecraft(ctx):
             self.logger.print('Start - Stop Minecraft Command Called')
-            status_proc = subprocess.run('/home/media-server/Scripts/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+            status_proc = subprocess.run('/home/media-server/Scripts/Minecraft/minecraft-status.sh', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
             status_str = status_proc.stdout.decode('utf-8')
 
             if '"running":true' in status_str:
                 await ctx.send(
                     "Attempting to stop Minecraft Server (Server could still be launching if this command was called too early)")
-                self.client.check_for_players.stop()
-                subprocess.call('/home/media-server/Scripts/minecraft-stop.sh', shell=True)
+                subprocess.call('/home/media-server/Scripts/Minecraft/minecraft-stop.sh', shell=True)
                 self.logger.print('    Minecraft server stopped')
             else:
                 await ctx.send("Minecraft server is not running")

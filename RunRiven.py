@@ -2,6 +2,7 @@ import argparse
 import discord
 import yt_dlp
 import asyncio
+import json
 
 from Logger import Logger
 from Riven import Riven
@@ -21,32 +22,32 @@ YT_PASSWORD = args.ytpass
 DIS_TOKEN = args.distoken
 OPENAI_KEY = args.openaikey
 
-ytdl_format_options = {
-    'username': 'meepmeep04@gmail.com',
-    'password': YT_PASSWORD,
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
-    'cookiefile': 'cookies.txt',
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
-}
-ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-yt_dlp.utils.bug_reports_message = lambda: ''
-ffmpeg_options = {
-    'options': '-vn'
-}
+# Load the CONFIG.JSON file
+with open('/home/media-server/Documents/GitHub/RivenBot/config.json') as f:
+    config = json.load(f)
 
+# Setup youtube-dlp
+ytdl_options = config['ytdl_format_options']
+ytdl_options['password'] = YT_PASSWORD
+
+ytdl = yt_dlp.YoutubeDL(ytdl_options)
+ffmpeg_options = config['ffmpeg_options']
+
+yt_dlp.utils.bug_reports_message = lambda: ''
 
 class YTDL(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
+        """
+        Initializes a new instance of the YTDL class.
+
+        Args:
+            source (AudioSource): The audio source for the YTDL instance.
+            data (dict): A dictionary containing the data for the YTDL instance.
+                It should have the following keys:
+                    - 'title' (str): The title of the audio source.
+                    - 'url' (str): The URL of the audio source.
+            volume (float, optional): The volume of the audio source. Defaults to 0.5.
+        """
         super().__init__(source, volume)
         self.data = data
         self.title = data.get('title')
@@ -54,6 +55,17 @@ class YTDL(discord.PCMVolumeTransformer):
 
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
+        """
+        Asynchronously creates a list of `YTDL` objects from a given URL.
+        
+        Args:
+            url (str): The URL of the video or playlist to extract information from.
+            loop (asyncio.AbstractEventLoop, optional): The event loop to use for the asynchronous operations. If not provided, the default event loop will be used.
+            stream (bool, optional): Whether to stream the video or not. Defaults to False.
+        
+        Returns:
+            Union[List[YTDL], None]: A list of `YTDL` objects if the URL is a playlist with multiple entries, a single `YTDL` object if the URL is a single video, or None if the URL is invalid or an error occurs during the extraction process.
+        """
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
@@ -84,7 +96,6 @@ class YTDL(discord.PCMVolumeTransformer):
                         player_list.append(None)
 
                 return player_list
-
         elif data is not None:
             filename = data['url'] if stream else ytdl.prepare_filename(data)
             try:
@@ -99,5 +110,5 @@ class YTDL(discord.PCMVolumeTransformer):
 
 
 logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
-riven_bot = Riven(logger, discord.Status.online, YTDL, OPENAI_KEY)
+riven_bot = Riven(logger, args.status, YTDL, OPENAI_KEY)
 riven_bot.run(DIS_TOKEN)

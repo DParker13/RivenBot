@@ -1,11 +1,11 @@
 import asyncio
 import discord
-import subprocess
+from discord import app_commands
+from discord.ext import commands, tasks
 from MinecraftCommands import MinecraftCommands
+from PalworldCommands import PalworldCommands
 from YoutubeCommands import YoutubeCommands
 from OpenAICommands import OpenAICommands
-from discord.ext import commands, tasks
-from file_read_backwards import FileReadBackwards
 
 
 class Riven(commands.Bot):
@@ -14,25 +14,76 @@ class Riven(commands.Bot):
 
     def __init__(self, logger, status, ytdl, openai_key):
         commands.Bot.__init__(self, command_prefix='!', intents=discord.Intents.all())
+
+        self.synced = False
         self.logger = logger
-        self.status = status
+        self.game_status = status
         self.add_commands()
         MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
+        PalworldCommands(client=self, logger=self.logger).add_palworld_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
         OpenAICommands(client=self, logger=self.logger, api_key=openai_key).addOpenAICommands()
 
     async def on_ready(self):
-        await self.change_presence(activity=discord.Game(self.status))
+        """
+        An asynchronous function that is called when the bot is ready to start receiving events.
+        It sets the bot's presence to a game with the specified status, sets up the logs, and prints a message indicating that the bot is online.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
         self.logger.setup_logs()
+        self.logger.print('Bot is setting up...')
+
+        self.logger.print('Changing status to: ' + str(self.game_status))
+        await self.change_presence(status = discord.Status.online, activity=discord.Game(self.game_status))
+        self.logger.print('Status changed!')
+        
         self.logger.print('Bot is online!')
 
     async def on_message(self, message):  # event that happens per any message.
+        """
+        An asynchronous function that is called when a message is received.
+        
+        Parameters:
+            message (discord.Message): The message object representing the received message.
+        
+        Returns:
+            None
+        
+        Description:
+            This function is triggered whenever a message is received. It checks if the message contains the word "beer" in the author's username (case-insensitive) and adds a "🍺" reaction to the message if it does. It then processes any commands in the message.
+        """
         if "beer" in str(message.author).lower():
             await message.add_reaction("🍺")
 
         await self.process_commands(message)
 
     async def on_voice_state_update(self, member, before, after):
+        """
+        Asynchronous function that handles voice state updates.
+
+        Args:
+            member (discord.Member): The member whose voice state has changed.
+            before (discord.VoiceState): The member's voice state before the update.
+            after (discord.VoiceState): The member's voice state after the update.
+
+        Returns:
+            None
+
+        This function is called whenever a member's voice state changes.
+        It checks if the member is not the bot itself and if the member has joined a voice channel.
+        If these conditions are met, it starts a loop that checks the bot's voice client's playback status every second.
+        If the bot is playing audio, the timeout is reset to 0.
+        If the timeout reaches 600 seconds (10 minutes), the bot's song queue is cleared, the bot disconnects from the voice channel, and a message is printed to the logger.
+        If the bot is not connected to a voice channel, the loop is broken.
+
+        Note:
+            This function assumes that the bot is already connected to a voice channel when a member joins.
+        """
         if not member.id == self.user.id:
             return
         elif before.channel is None:
@@ -51,16 +102,76 @@ class Riven(commands.Bot):
                     break
 
     async def setup_hook(self):
+        """
+        Asynchronously starts the audio player task.
+
+        This method is called during the setup phase of the bot. It starts the audio player task, which is responsible for playing audio in the voice channel.
+
+        Parameters:
+            self (object): The instance of the class.
+
+        Returns:
+            None
+        """
         self.audio_player_task.start()
 
     def add_commands(self):
-        @self.command(name='ping', help='Returns the latency')
-        async def ping(ctx):
+        """
+        Adds the 'ping' command to the Discord client.
+
+        This function adds the 'ping' command to the Discord client. When the command is called, it returns the latency of the bot in milliseconds.
+
+        Parameters:
+            self (object): The instance of the class.
+            ctx (Context): The context object representing the invocation context of the command.
+
+        Returns:
+            None
+        """
+
+        @self.tree.command(name='ping', description='Returns the latency')
+        async def ping(interaction: discord.Interaction):
+            """
+            The ping command returns the latency of the Discord bot.
+
+            Parameters:
+                ctx (Context): The invocation context of the command.
+
+            Returns:
+                None
+            """
             self.logger.print('Start - Ping Command Called')
-            await ctx.send(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
+            await interaction.response.send_message(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
             self.logger.print('End - Ping Command Called')
 
+        @self.command(name='sync', description='Syncs the application commands with Discord')
+        async def sync(ctx):
+            """
+            Syncs the application commands with Discord.
+        
+            This method syncs the application commands with Discord. It retrieves the application commands from the Discord API and syncs them with the bot.
+        
+            Parameters:
+                interaction (discord.Interaction): The interaction object representing the invocation context of the command.
+        
+            Returns:
+                None
+            """
+            self.logger.print('Start - Sync Command Called')
+            synced = await self.tree.sync()
+            await ctx.send(f"Synced {len(synced)} command(s).")
+            self.logger.print('End - Sync Command Called')
+
     def empty_queue(self, q: asyncio.Queue):
+        """
+        Empty the given queue by removing all items from it.
+
+        Parameters:
+            q (asyncio.Queue): The queue to be emptied.
+
+        Returns:
+            None
+        """
         self.logger.print('Start - Empty Queue')
         if not q.empty():
             for _ in range(q.qsize()):
@@ -72,32 +183,42 @@ class Riven(commands.Bot):
 
     @tasks.loop(seconds=1)
     async def audio_player_task(self):
+        """
+        Asynchronously plays songs from a queue in a Discord voice channel.
+
+        This function is a loop that runs every second and checks if there are songs in the queue. If there are, it retrieves the next song from the queue and plays it in the voice channel. If the voice client is not currently playing audio, it starts playing the song. If there are no more songs in the queue, it sends a message to the Discord channel indicating that the last song has finished playing. If there are more songs in the queue, it sends a message indicating the number of songs remaining in the queue. The function waits for the next song to finish playing before starting the next song.
+
+        Parameters:
+            self (object): The instance of the class.
+
+        Returns:
+            None
+        """
         try:
             Riven.play_next_song.clear()
             queue_item = await Riven.songs.get()
+            interaction = queue_item[0]
             current_video = queue_item[1]
-            ctx = queue_item[0]
-            guild = ctx.message.guild
-            voice_client = guild.voice_client
+            voice_client = interaction.guild.voice_client
             self.logger.print("Trying to play - ", queue_item[1].title)
 
             try:
                 if not voice_client.is_playing():
                     self.logger.print('Start - Start Song in Queue')
-                    voice_client.play(current_video, after=self.toggle_next)
+                    voice_client.play(current_video, after=self.toggle_next())
 
                     if Riven.songs.qsize() == 0:
                         self.logger.print(
                             '    Starting Last Song - ' + str(current_video.title) + ' Queue Size: ' + str(
                                 Riven.songs.qsize()))
-                        await ctx.send(
+                        await interaction.followup.send(
                             ':musical_note: **Now playing:** {} :musical_note:'.format(current_video.title))
                         self.logger.print('    Awaiting Last Song...')
                     else:
                         self.logger.print(
                             '    Starting Next Song - ' + str(current_video.title) + ' Queue Size: ' + str(
                                 Riven.songs.qsize()))
-                        await ctx.send(
+                        await interaction.followup.send(
                             '**Queue: **' + str(Riven.songs.qsize()) + '\n:musical_note: **Now playing:** {} '
                                                                        ':musical_note:'.format(
                                 current_video.title))
@@ -110,48 +231,16 @@ class Riven(commands.Bot):
         except AttributeError as e:
             self.logger.print('Error - ' + str(e))
 
-    def toggle_next(self, error):
+    def toggle_next(self):
+        """
+        Toggles the next song in the queue.
+
+        Args:
+            self (object): The instance of the class.
+
+        Returns:
+            None
+        """
         self.logger.print('Start - Toggle Next Called')
         self.loop.call_soon_threadsafe(Riven.play_next_song.set)
         self.logger.print('End - Toggle Next Called')
-
-    @tasks.loop(minutes=30)
-    async def check_for_players(self, ctx):
-        status_proc = subprocess.run('screen -ls', shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        status_str = status_proc.stdout.decode('ascii')
-        player_count = 0
-
-        if 'minecraft' in status_str:
-            try:
-                subprocess.call(r"screen -S minecraft -X stuff '/say Checking for active players... \015 list \015'",
-                                shell=True)
-                await asyncio.sleep(2)
-                subprocess.call('screen -S minecraft -X hardcopy ~/Scripts/Script_Files/player-check.log', shell=True)
-
-                with FileReadBackwards('/home/media-server/Scripts/Script_Files/player-check.log',
-                                       encoding='utf-8') as frb:
-                    for line in frb:
-                        if '/20' in line:
-                            i = line.index('/20')
-                            player_count = int(line[i - 2:i].strip())
-                            self.logger.print(str(player_count))
-                            break
-                    self.logger.print("Did not find player count!")
-
-                if player_count == 0:
-                    self.logger.print("Found no players online - shutting Minecraft server down")
-                    subprocess.call(
-                        r'screen -S minecraft -X stuff "/say Stopping server in 30 seconds due to lack of players \015"',
-                        shell=True)
-                    await asyncio.sleep(30)
-                    subprocess.call('screen -S minecraft -X stuff "stop\n"', shell=True)
-                    await ctx.send("Stopping Minecraft server due to lack of players")
-                else:
-                    self.logger.print("Players are online: " + str(player_count))
-            except FileNotFoundError as ex:
-                self.logger.print(ex)
-                await ctx.send(str(ex))
-                Riven.check_for_players.stop()
-        else:
-            self.logger.print("Stopping player check")
-            Riven.check_for_players.stop()

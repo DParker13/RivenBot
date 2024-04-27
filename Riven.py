@@ -2,7 +2,6 @@ import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-from MinecraftCommands import MinecraftCommands
 from PalworldCommands import PalworldCommands
 from YoutubeCommands import YoutubeCommands
 from OpenAICommands import OpenAICommands
@@ -19,7 +18,6 @@ class Riven(commands.Bot):
         self.logger = logger
         self.game_status = status
         self.add_commands()
-        MinecraftCommands(client=self, logger=self.logger).add_minecraft_commands()
         PalworldCommands(client=self, logger=self.logger).add_palworld_commands()
         YoutubeCommands(client=self, logger=self.logger, ytdl=ytdl).add_youtube_commands()
         OpenAICommands(client=self, logger=self.logger, api_key=openai_key).addOpenAICommands()

@@ -12,8 +12,6 @@ parser = argparse.ArgumentParser(description='Discord bot for the Soft Tacos')
 parser.add_argument("--ytpass", help="Youtube account password")
 parser.add_argument("--distoken", help="Discord token")
 parser.add_argument("--openaikey", help="OpenAI Secret Key")
-parser.add_argument("--logpath", help="Base path for log files")
-parser.add_argument("--enablelogs", help="Set 'True' to enable logs")
 parser.add_argument("--status", help="The Discord status that appears under the bot name in Discord app")
 args = parser.parse_args()
 
@@ -54,7 +52,7 @@ class YTDL(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=True):
         """
         Asynchronously creates a list of `YTDL` objects from a given URL.
         
@@ -109,6 +107,6 @@ class YTDL(discord.PCMVolumeTransformer):
         return None
 
 
-logger = Logger(base_path=args.logpath, enable_logs=args.enablelogs)
+logger = Logger(base_path=config['logging']['base_path'], enable_logs=config['logging']['enable_logs'], log_level=config['logging']['log_level'])
 riven_bot = Riven(logger, args.status, YTDL, OPENAI_KEY)
 riven_bot.run(DIS_TOKEN)

@@ -1,5 +1,6 @@
 import asyncio
 import discord
+import logging
 from discord import app_commands
 from discord.ext import commands, tasks
 from PalworldCommands import PalworldCommands
@@ -8,7 +9,7 @@ from OpenAICommands import OpenAICommands
 
 
 class Riven(commands.Bot):
-    songs = asyncio.Queue()
+    audio_queue = asyncio.Queue()
     play_next_song = asyncio.Event()
 
     def __init__(self, logger, status, ytdl, openai_key):
@@ -33,14 +34,13 @@ class Riven(commands.Bot):
         Returns:
             None
         """
-        self.logger.setup_logs()
-        self.logger.print('Bot is setting up...')
+        self.logger.info('Bot is setting up...')
 
-        self.logger.print('Changing status to: ' + str(self.game_status))
+        self.logger.info('Changing status to: ' + str(self.game_status))
         await self.change_presence(status = discord.Status.online, activity=discord.Game(self.game_status))
-        self.logger.print('Status changed!')
+        self.logger.info('Status changed!')
         
-        self.logger.print('Bot is online!')
+        self.logger.info('Bot is online!')
 
     async def on_message(self, message):  # event that happens per any message.
         """
@@ -93,9 +93,9 @@ class Riven(commands.Bot):
                 if voice.is_playing():
                     timeout = 0
                 if timeout == 600:
-                    self.empty_queue(Riven.songs)
+                    self.empty_queue(Riven.audio_queue)
                     await voice.disconnect()
-                    self.logger.print("Bot inactive for too long: leaving channel")
+                    self.logger.info("Bot inactive for too long: leaving channel")
                 if not voice.is_connected():
                     break
 
@@ -138,9 +138,9 @@ class Riven(commands.Bot):
             Returns:
                 None
             """
-            self.logger.print('Start - Ping Command Called')
+            self.logger.trace('Start - Ping Command Called')
             await interaction.response.send_message(f'**Pong!** Latency: {round(self.latency * 1000)}ms')
-            self.logger.print('End - Ping Command Called')
+            self.logger.trace('End - Ping Command Called')
 
         @self.command(name='sync', description='Syncs the application commands with Discord')
         async def sync(ctx):
@@ -155,10 +155,10 @@ class Riven(commands.Bot):
             Returns:
                 None
             """
-            self.logger.print('Start - Sync Command Called')
+            self.logger.trace('Start - Sync Command Called')
             synced = await self.tree.sync()
             await ctx.send(f"Synced {len(synced)} command(s).")
-            self.logger.print('End - Sync Command Called')
+            self.logger.trace('End - Sync Command Called')
 
     def empty_queue(self, q: asyncio.Queue):
         """
@@ -170,21 +170,26 @@ class Riven(commands.Bot):
         Returns:
             None
         """
-        self.logger.print('Start - Empty Queue')
+        self.logger.trace('Start - Empty Queue')
         if not q.empty():
             for _ in range(q.qsize()):
                 # Depending on your program, you may want to
                 # catch QueueEmpty
                 q.get_nowait()
                 q.task_done()
-        self.logger.print('End - Empty Queue')
+        self.logger.trace('End - Empty Queue')
 
     @tasks.loop(seconds=1)
     async def audio_player_task(self):
         """
-        Asynchronously plays songs from a queue in a Discord voice channel.
+        Asynchronously plays audio from a queue in a Discord voice channel.
 
-        This function is a loop that runs every second and checks if there are songs in the queue. If there are, it retrieves the next song from the queue and plays it in the voice channel. If the voice client is not currently playing audio, it starts playing the song. If there are no more songs in the queue, it sends a message to the Discord channel indicating that the last song has finished playing. If there are more songs in the queue, it sends a message indicating the number of songs remaining in the queue. The function waits for the next song to finish playing before starting the next song.
+        This function is a loop that runs every second and checks if there audio in the queue.
+        If there are, it retrieves the next audio clip from the queue and plays it in the voice channel.
+        If the voice client is not currently playing audio, it starts playing the song.
+        If there is no more audio in the queue, it sends a message to the Discord channel indicating that the last song has finished playing.
+        If there is more audio in the queue, it sends a message indicating the number of audio clips remaining in the queue.
+        The function waits for the next audio clip to finish playing before starting the next one.
 
         Parameters:
             self (object): The instance of the class.
@@ -194,51 +199,36 @@ class Riven(commands.Bot):
         """
         try:
             Riven.play_next_song.clear()
-            queue_item = await Riven.songs.get()
+            queue_item = await Riven.audio_queue.get()
             interaction = queue_item[0]
             current_video = queue_item[1]
             voice_client = interaction.guild.voice_client
-            self.logger.print("Trying to play - ", queue_item[1].title)
+            self.logger.info("Trying to play - " + str(queue_item[1].title))
 
             try:
                 if not voice_client.is_playing():
-                    self.logger.print('Start - Start Song in Queue')
-                    voice_client.play(current_video, after=self.toggle_next())
+                    self.logger.trace('Start - Start Audio in Queue')
+                    voice_client.play(current_video, after=lambda _: self.loop.call_soon_threadsafe(Riven.play_next_song.set))
 
-                    if Riven.songs.qsize() == 0:
-                        self.logger.print(
-                            '    Starting Last Song - ' + str(current_video.title) + ' Queue Size: ' + str(
-                                Riven.songs.qsize()))
+                    if Riven.audio_queue.qsize() == 0:
+                        self.logger.info(
+                            '    Starting Last Audio - ' + str(current_video.title) + ' Queue Size: ' + str(
+                                Riven.audio_queue.qsize()))
                         await interaction.followup.send(
                             ':musical_note: **Now playing:** {} :musical_note:'.format(current_video.title))
-                        self.logger.print('    Awaiting Last Song...')
                     else:
-                        self.logger.print(
+                        self.logger.info(
                             '    Starting Next Song - ' + str(current_video.title) + ' Queue Size: ' + str(
-                                Riven.songs.qsize()))
+                                Riven.audio_queue.qsize()))
                         await interaction.followup.send(
-                            '**Queue: **' + str(Riven.songs.qsize()) + '\n:musical_note: **Now playing:** {} '
+                            '**Queue: **' + str(Riven.audio_queue.qsize()) + '\n:musical_note: **Now playing:** {} '
                                                                        ':musical_note:'.format(
                                 current_video.title))
-                    self.logger.print('    Awaiting Next Song...')
+                    self.logger.info('    Awaiting Next Song...')
                     await Riven.play_next_song.wait()
                 else:
-                    self.logger.print('Voice_client Still Playing Audio!')
+                    self.logger.info('!Voice_client Still Playing Audio!')
             except discord.errors.ClientException as e:
-                self.logger.print('Error - ' + str(e))
+                self.logger.error('Error - ' + str(e))
         except AttributeError as e:
-            self.logger.print('Error - ' + str(e))
-
-    def toggle_next(self):
-        """
-        Toggles the next song in the queue.
-
-        Args:
-            self (object): The instance of the class.
-
-        Returns:
-            None
-        """
-        self.logger.print('Start - Toggle Next Called')
-        self.loop.call_soon_threadsafe(Riven.play_next_song.set)
-        self.logger.print('End - Toggle Next Called')
+            self.logger.error('Error - ' + str(e))
